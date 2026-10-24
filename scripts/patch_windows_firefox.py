@@ -9,10 +9,13 @@ import json
 import os
 import re
 import shutil
+import struct
 import subprocess
 import sys
 import tempfile
 import zipfile
+
+from init_chrome_tree import encode_png_paeth, make_ico_dib, read_png_rgba, resize_rgba
 
 
 TRANSPARENT_PNG = base64.b64decode(
@@ -70,7 +73,9 @@ USERCONTENT_APPEND_CSS = """
         width: 100% !important;
         max-width: 800px !important;
         margin: 0 auto !important;
-        background: transparent !important;
+        background: #1a1a1a !important;
+        color: #ffffff !important;
+        border-radius: 16px !important;
         display: flex !important;
         flex-direction: column !important;
         align-items: center !important;
@@ -85,7 +90,7 @@ USERCONTENT_APPEND_CSS = """
         text-align: center !important;
         background-color: transparent !important;
     }
-    h1, h2, p, span, label { color: white !important; }
+    .onboardingContainer h1, .onboardingContainer h2, .onboardingContainer p, .onboardingContainer span, .onboardingContainer label { color: white !important; }
 }
 @-moz-document url("about:home"), url("about:newtab") {
     body { background-color: #1a1a1a !important; }
@@ -168,6 +173,24 @@ NEWTAB_REDIRECT_JS = """try {
 } catch(e) {}
 """
 
+ONBOARDING_BYPASS_PREFS_JS = """
+// Seafari: Suppress Firefox 158+ Terms of Use / Spotlight / AboutWelcome modals and Nova visual overrides
+pref("termsofuse.bypassNotification", true);
+pref("termsofuse.acceptedVersion", 999);
+pref("termsofuse.acceptedDate", "1700000000000");
+pref("termsofuse.firstAcceptedDate", "1700000000000");
+pref("browser.aboutwelcome.enabled", false);
+pref("browser.nova.enabled", false);
+pref("browser.newtabpage.activity-stream.nova.enabled", false);
+pref("datareporting.policy.dataSubmissionPolicyBypassNotification", true);
+pref("datareporting.policy.firstRunURL", "");
+pref("browser.messaging-system.whatsNewPanel.enabled", false);
+pref("browser.uitour.enabled", false);
+pref("browser.promo.focus.enabled", false);
+pref("widget.windows.mica", false);
+pref("xpinstall.signatures.required", false);
+"""
+
 
 def find_7z():
     for candidate in [
@@ -193,6 +216,10 @@ def patch_ublock_xpi(src_xpi, dst_xpi):
             with open(manifest_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
             data["externally_connectable"] = {"ids": ["tab-overview@seafari.org"]}
+            if "browser_action" in data and isinstance(data["browser_action"], dict):
+                data["browser_action"]["default_area"] = "menupanel"
+            if "action" in data and isinstance(data["action"], dict):
+                data["action"]["default_area"] = "menupanel"
             with open(manifest_path, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2)
 
@@ -223,14 +250,41 @@ def extract_seafari_cfg_from_linux_script(linux_script_path):
         raise RuntimeError("Could not locate seafari.cfg block in build_seafari_linux.sh")
 
     cfg = m.group(1)
-    # Remove bash $UA_LINE placeholder
-    cfg = cfg.replace("$UA_LINE", 'pref("widget.windows.mica", false);\n  pref("xpinstall.signatures.required", false);')
+    # Replace bash $UA_LINE placeholder with Windows & onboarding bypass prefs
+    extra_prefs = (
+        'pref("widget.windows.mica", false);\n'
+        '  pref("xpinstall.signatures.required", false);\n'
+        '  pref("termsofuse.bypassNotification", true);\n'
+        '  pref("termsofuse.acceptedVersion", 999);\n'
+        '  pref("termsofuse.acceptedDate", "1700000000000");\n'
+        '  pref("termsofuse.firstAcceptedDate", "1700000000000");\n'
+        '  pref("browser.aboutwelcome.enabled", false);\n'
+        '  pref("browser.nova.enabled", false);\n'
+        '  pref("browser.newtabpage.activity-stream.nova.enabled", false);\n'
+        '  pref("datareporting.policy.dataSubmissionPolicyBypassNotification", true);\n'
+        '  pref("datareporting.policy.firstRunURL", "");'
+    )
+    cfg = cfg.replace("$UA_LINE", extra_prefs)
 
     # Fix upstream XPCOM contract ID bug for nsIFileOutputStream
     cfg = cfg.replace("@mozilla.org/file/output-stream;1", "@mozilla.org/network/file-output-stream;1")
 
     # Inject Windows profile theme auto-sync & immediate nsIStyleSheetService registration right after log("Seafari Autoconfig initialization started");
     profile_sync_js = """
+try {
+  // Ensure onboarding/Terms-of-Use/Nova prefs are set on the user branch too
+  var pb = Components.classes["@mozilla.org/preferences-service;1"]
+                     .getService(Components.interfaces.nsIPrefBranch);
+  pb.setBoolPref("termsofuse.bypassNotification", true);
+  pb.setIntPref("termsofuse.acceptedVersion", 999);
+  pb.setCharPref("termsofuse.acceptedDate", "1700000000000");
+  pb.setCharPref("termsofuse.firstAcceptedDate", "1700000000000");
+  pb.setBoolPref("browser.aboutwelcome.enabled", false);
+  pb.setBoolPref("browser.nova.enabled", false);
+  pb.setBoolPref("browser.newtabpage.activity-stream.nova.enabled", false);
+  pb.setBoolPref("datareporting.policy.dataSubmissionPolicyBypassNotification", true);
+} catch (prefErr) {}
+
 try {
   // Automatically sync GreD/seafari-theme into ProfD/chrome on Windows/Linux
   // so launching firefox.exe or seafari.exe directly always has the Safari UI.
@@ -258,7 +312,7 @@ try {
         copyDirRecursive(entry, target);
       } else {
         try {
-          if (!target.exists() || target.fileSize !== entry.fileSize) {
+          if (!target.exists() || target.fileSize !== entry.fileSize || target.lastModifiedTime < entry.lastModifiedTime) {
             if (target.exists()) target.remove(false);
             entry.copyTo(dstDir, entry.leafName);
           }
@@ -303,7 +357,10 @@ try {
         1,
     )
 
-    # Also support modern CSS Flexbox in makePill and skip toolbarspring elements
+    cfg = cfg.replace(
+        '    function relocateUblockBtn(node) {\n      if (!node) return;',
+        '    function relocateUblockBtn(node) {\n      try {\n        if (window.CustomizableUI) {\n          window.CustomizableUI.removeWidgetFromArea("ublock0_raymondhill_net-browser-action");\n        }\n      } catch(e) {}\n      if (node) {\n        try {\n          node.style.setProperty("display", "none", "important");\n          node.setAttribute("hidden", "true");\n        } catch(e) {}\n      }\n      return;',
+    )
     cfg = cfg.replace(
         'var knownSkipIds  = ["urlbar-container", "stop-reload-button",\n                         "sidebar-button", "developer-button",\n                         "fxa-toolbar-button", "unified-extensions-button"];',
         'var knownSkipIds  = ["urlbar-container", "stop-reload-button",\n                         "sidebar-button", "developer-button",\n                         "fxa-toolbar-button", "fxa-toolbar-menu-button", "unified-extensions-button", "vertical-spacer"];',
@@ -314,7 +371,7 @@ try {
     )
     cfg = cfg.replace(
         'Array.from(navBar.children).forEach(function(node) {\n      var id = node.id || "";',
-        'Array.from(navBar.children).forEach(function(node) {\n      if (node.localName === "toolbarspring" || node.localName === "toolbartabstop") { try { node.style.setProperty("display", "none", "important"); } catch(e) {} return; }\n      var id = node.id || "";',
+        'Array.from(navBar.children).forEach(function(node) {\n      if (node.localName === "toolbarspring" || node.localName === "toolbartabstop") { try { node.style.setProperty("display", "none", "important"); } catch(e) {} return; }\n      var id = node.id || "";\n      if (id.indexOf("ublock") !== -1 || id.indexOf("uBlock") !== -1) { relocateUblockBtn(node); return; }',
     )
     cfg = cfg.replace(
         'forceStyle(pill, "display", "-moz-box");\n      forceStyle(pill, "-moz-box-align", "center");',
@@ -327,6 +384,108 @@ try {
     cfg = cfg.replace(
         'if (pillUrlbar) {\n      pillUrlbar.setAttribute("flex", "1");\n      forceStyle(pillUrlbar, "-moz-box-flex", "1");\n    }',
         'if (pillUrlbar) {\n      pillUrlbar.setAttribute("flex", "1");\n      forceStyle(pillUrlbar, "-moz-box-flex", "1");\n      forceStyle(pillUrlbar, "flex", "1 1 auto");\n      if (urlbarEl) { urlbarEl.setAttribute("flex", "1"); forceStyle(urlbarEl, "flex", "1 1 auto"); }\n    }',
+    )
+
+    # Inject macOS-style window moving animation + liquid glass transparency detector
+    window_move_js = """
+      // --- macOS Window Move / Drag Liquid Glass Transparency & Spring Animation ---
+      try {
+        var lastWinX = win.screenX;
+        var lastWinY = win.screenY;
+        var moveTimeout = null;
+        var isMoving = false;
+        var ctypesHwnd = null;
+        var SetLayeredWindowAttributesFn = null;
+        var GetWindowLongWFn = null;
+        var SetWindowLongWFn = null;
+        var FindWindowExWFn = null;
+        var GetWindowThreadProcessIdFn = null;
+        var GetCurrentProcessIdFn = null;
+
+        try {
+          var { ctypes } = ChromeUtils.importESModule("resource://gre/modules/ctypes.sys.mjs");
+          var user32 = ctypes.open("user32.dll");
+          var kernel32 = ctypes.open("kernel32.dll");
+          GetWindowLongWFn = user32.declare("GetWindowLongW", ctypes.winapi_abi, ctypes.long, ctypes.voidptr_t, ctypes.int);
+          SetWindowLongWFn = user32.declare("SetWindowLongW", ctypes.winapi_abi, ctypes.long, ctypes.voidptr_t, ctypes.int, ctypes.long);
+          SetLayeredWindowAttributesFn = user32.declare("SetLayeredWindowAttributes", ctypes.winapi_abi, ctypes.int, ctypes.voidptr_t, ctypes.uint32_t, ctypes.uint8_t, ctypes.uint32_t);
+          FindWindowExWFn = user32.declare("FindWindowExW", ctypes.winapi_abi, ctypes.voidptr_t, ctypes.voidptr_t, ctypes.voidptr_t, ctypes.jschar.ptr, ctypes.jschar.ptr);
+          GetWindowThreadProcessIdFn = user32.declare("GetWindowThreadProcessId", ctypes.winapi_abi, ctypes.uint32_t, ctypes.voidptr_t, ctypes.uint32_t.ptr);
+          GetCurrentProcessIdFn = kernel32.declare("GetCurrentProcessId", ctypes.winapi_abi, ctypes.uint32_t);
+        } catch (ctErr) {}
+
+        function resolveHwnd() {
+          if (ctypesHwnd && !ctypesHwnd.isNull()) return ctypesHwnd;
+          if (!FindWindowExWFn || !GetWindowThreadProcessIdFn || !GetCurrentProcessIdFn) return null;
+          try {
+            var myPid = GetCurrentProcessIdFn();
+            var cur = null;
+            var pidOut = new ctypes.uint32_t(0);
+            for (var i = 0; i < 60; i++) {
+              cur = FindWindowExWFn(null, cur, "MozillaWindowClass", null);
+              if (!cur || cur.isNull()) break;
+              GetWindowThreadProcessIdFn(cur, pidOut.address());
+              if (pidOut.value === myPid) {
+                ctypesHwnd = cur;
+                return ctypesHwnd;
+              }
+            }
+          } catch (e) {}
+          return null;
+        }
+
+        function setWinAlpha(alpha) {
+          try {
+            var h = resolveHwnd();
+            if (!h || h.isNull()) return;
+            var GWL_EXSTYLE = -20;
+            var WS_EX_LAYERED = 0x00080000;
+            var LWA_ALPHA = 0x02;
+            var exStyle = GetWindowLongWFn(h, GWL_EXSTYLE);
+            if (alpha < 255) {
+              if ((exStyle & WS_EX_LAYERED) === 0) {
+                SetWindowLongWFn(h, GWL_EXSTYLE, exStyle | WS_EX_LAYERED);
+              }
+              SetLayeredWindowAttributesFn(h, 0, alpha, LWA_ALPHA);
+            } else {
+              SetLayeredWindowAttributesFn(h, 0, 255, LWA_ALPHA);
+            }
+          } catch (e) {}
+        }
+
+        win.setInterval(function() {
+          try {
+            var cx = win.screenX;
+            var cy = win.screenY;
+            if (cx !== lastWinX || cy !== lastWinY) {
+              var dx = Math.max(-14, Math.min(14, cx - lastWinX));
+              var dy = Math.max(-14, Math.min(14, cy - lastWinY));
+              lastWinX = cx;
+              lastWinY = cy;
+              doc.documentElement.style.setProperty("--seafari-drag-dx", dx + "px");
+              doc.documentElement.style.setProperty("--seafari-drag-dy", dy + "px");
+              if (!isMoving) {
+                isMoving = true;
+                doc.documentElement.setAttribute("seafari-window-moving", "true");
+                setWinAlpha(224); // ~88% OS-level glass translucency while dragging
+              }
+              if (moveTimeout) win.clearTimeout(moveTimeout);
+              moveTimeout = win.setTimeout(function() {
+                isMoving = false;
+                doc.documentElement.removeAttribute("seafari-window-moving");
+                doc.documentElement.style.setProperty("--seafari-drag-dx", "0px");
+                doc.documentElement.style.setProperty("--seafari-drag-dy", "0px");
+                setWinAlpha(255);
+              }, 160);
+            }
+          } catch (e) {}
+        }, 16);
+      } catch (moveErr) {}
+"""
+    cfg = cfg.replace(
+        'if (urlbar) {\n        urlbar.addEventListener("focusin", function() { setHidden(false); updateToolbarLuminance(); });',
+        window_move_js + '\n      if (urlbar) {\n        urlbar.addEventListener("focusin", function() { setHidden(false); updateToolbarLuminance(); });',
+        1,
     )
     return cfg
 
@@ -341,7 +500,6 @@ def unpack_omni_ja(ja_path, out_dir, seven_zip):
             stderr=subprocess.DEVNULL,
         )
     if not os.listdir(out_dir):
-        # Fallback to unzip command if available
         unzip_bin = shutil.which("unzip")
         if unzip_bin:
             subprocess.run(
@@ -396,7 +554,6 @@ def patch_omni_tree(temp_dir, repo_root, is_browser_omni=False):
     # 1. Overlay files from chrome/browser/ or chrome/gre/
     if is_browser_omni:
         copy_tree_overlay(os.path.join(repo_root, "chrome", "browser"), temp_dir)
-        # Also overlay chrome/browser/locale/en-US/branding into chrome/en-US/locale/branding and localization/en-US/branding
         locale_src = os.path.join(repo_root, "chrome", "browser", "locale", "en-US", "branding")
         if os.path.exists(locale_src):
             en_us_branding = os.path.join(temp_dir, "chrome", "en-US", "locale", "branding")
@@ -410,6 +567,12 @@ def patch_omni_tree(temp_dir, repo_root, is_browser_omni=False):
                 src_ftl = os.path.join(locale_src, "brand.ftl")
                 if os.path.exists(src_ftl):
                     shutil.copy2(src_ftl, os.path.join(l10n_branding, "brand.ftl"))
+
+        # Append onboarding & Nova bypass preferences directly to defaults/preferences/firefox.js
+        firefox_prefs_js = os.path.join(temp_dir, "defaults", "preferences", "firefox.js")
+        if os.path.exists(firefox_prefs_js):
+            with open(firefox_prefs_js, "a", encoding="utf-8") as f:
+                f.write("\n" + ONBOARDING_BYPASS_PREFS_JS)
     else:
         copy_tree_overlay(os.path.join(repo_root, "chrome", "gre"), temp_dir)
 
@@ -572,6 +735,139 @@ def patch_application_ini(ini_path):
         f.write(content)
 
 
+def patch_pe_resources_inplace(exe_path, png_path):
+    """
+    Pure-Python Win32 PE resource patcher that works identically on Linux and Windows.
+    Replaces embedded Firefox icons (RT_ICON / RT_GROUP_ICON), version strings (RT_VERSION),
+    and string table (RT_STRING) in firefox.exe / seafari.exe with Seafari branding,
+    and strips the Authenticode certificate table so Windows accepts the modified binary.
+    """
+    if not os.path.exists(exe_path):
+        return
+    print(f"[*] Patching Win32 PE resources (icons + version info) in {os.path.basename(exe_path)} ...")
+
+    src_w, src_h, src_px = read_png_rgba(png_path)
+    dib_16 = make_ico_dib(16, 16, resize_rgba(src_w, src_h, src_px, 16, 16))
+    dib_32 = make_ico_dib(32, 32, resize_rgba(src_w, src_h, src_px, 32, 32))
+    dib_48 = make_ico_dib(48, 48, resize_rgba(src_w, src_h, src_px, 48, 48))
+    png_256 = encode_png_paeth(256, 256, resize_rgba(src_w, src_h, src_px, 256, 256))
+    png_192 = encode_png_paeth(192, 192, resize_rgba(src_w, src_h, src_px, 192, 192))
+
+    with open(exe_path, "rb") as f:
+        data = bytearray(f.read())
+
+    e_lfanew = struct.unpack_from("<I", data, 0x3C)[0]
+    num_sections = struct.unpack_from("<H", data, e_lfanew + 6)[0]
+    size_opt = struct.unpack_from("<H", data, e_lfanew + 20)[0]
+    opt_offset = e_lfanew + 24
+    magic = struct.unpack_from("<H", data, opt_offset)[0]
+    dd_offset = opt_offset + (112 if magic == 0x20B else 96)
+
+    # Clear IMAGE_DIRECTORY_ENTRY_SECURITY (index 4) and CheckSum
+    sec_rva, sec_size = struct.unpack_from("<II", data, dd_offset + 4 * 8)
+    if sec_rva > 0 and sec_rva + sec_size == len(data):
+        del data[sec_rva:]
+    struct.pack_into("<II", data, dd_offset + 4 * 8, 0, 0)
+    struct.pack_into("<I", data, opt_offset + 64, 0)
+
+    # Locate .rsrc section
+    sec_table = opt_offset + size_opt
+    rsrc_rva = rsrc_raw = 0
+    for i in range(num_sections):
+        s = sec_table + i * 40
+        name = bytes(data[s : s + 8]).rstrip(b"\x00")
+        vsize, vrva, rawsize, rawptr = struct.unpack_from("<IIII", data, s + 8)
+        if name == b".rsrc":
+            rsrc_rva = vrva
+            rsrc_raw = rawptr
+            break
+    if not rsrc_raw:
+        print(f"[!] Could not locate .rsrc section in {exe_path}")
+        return
+
+    def rva_to_raw(rva):
+        return rsrc_raw + (rva - rsrc_rva)
+
+    icon_entries = {}  # icon_id -> (data_entry_off, raw_off, orig_size)
+    group_entries = {}  # group_id -> (data_entry_off, raw_off, orig_size)
+
+    def walk_rsrc(offset, path=()):
+        num_named, num_id = struct.unpack_from("<HH", data, rsrc_raw + offset + 12)
+        for i in range(num_named + num_id):
+            entry_off = rsrc_raw + offset + 16 + i * 8
+            name_or_id, data_or_dir = struct.unpack_from("<II", data, entry_off)
+            ident = name_or_id if not (name_or_id & 0x80000000) else "NAMED"
+            if data_or_dir & 0x80000000:
+                walk_rsrc(data_or_dir & 0x7FFFFFFF, path + (ident,))
+            else:
+                d_off = rsrc_raw + data_or_dir
+                d_rva, d_size, _, _ = struct.unpack_from("<IIII", data, d_off)
+                raw_off = rva_to_raw(d_rva)
+                if path[0] == 3:
+                    icon_entries[path[1]] = (d_off, raw_off, d_size)
+                elif path[0] == 14:
+                    group_entries[path[1]] = (d_off, raw_off, d_size)
+
+    walk_rsrc(0)
+
+    # First find a large icon slot (>= len(png_256)) such as icon 28 (61,748 bytes)
+    # where we can store the 256x256 Seafari PNG and point other 256x256 icon entries to its RVA!
+    shared_256_rva = None
+    for iid, (d_off, raw_off, orig_size) in icon_entries.items():
+        if orig_size >= len(png_256):
+            data[raw_off : raw_off + len(png_256)] = png_256
+            struct.pack_into("<I", data, d_off + 4, len(png_256))
+            shared_256_rva = struct.unpack_from("<I", data, d_off)[0]
+            break
+
+    # Update all RT_GROUP_ICONs and their referenced RT_ICONs
+    for gid, (g_doff, g_raw, g_size) in group_entries.items():
+        _, _, gcount = struct.unpack_from("<HHH", data, g_raw)
+        for j in range(gcount):
+            grp_entry_off = g_raw + 6 + j * 14
+            w, h, cc, r, planes, bpp, bytes_in_res, nid = struct.unpack_from(
+                "<BBBBHHIH", data, grp_entry_off
+            )
+            if nid not in icon_entries:
+                continue
+            i_doff, i_raw, i_orig_size = icon_entries[nid]
+            dim = 256 if w == 0 else w
+            replacement = None
+            if dim == 16 and len(dib_16) <= i_orig_size:
+                replacement = dib_16
+            elif dim == 32 and len(dib_32) <= i_orig_size:
+                replacement = dib_32
+            elif dim == 48 and len(dib_48) <= i_orig_size:
+                replacement = dib_48
+            elif dim == 256:
+                if shared_256_rva is not None:
+                    # Point this 256x256 icon's IMAGE_RESOURCE_DATA_ENTRY RVA to shared_256_rva
+                    struct.pack_into("<II", data, i_doff, shared_256_rva, len(png_256))
+                    struct.pack_into("<I", data, grp_entry_off + 8, len(png_256))
+                    continue
+                elif len(png_192) <= i_orig_size:
+                    replacement = png_192
+
+            if replacement is not None:
+                data[i_raw : i_raw + len(replacement)] = replacement
+                struct.pack_into("<I", data, i_doff + 4, len(replacement))
+                struct.pack_into("<I", data, grp_entry_off + 8, len(replacement))
+
+    # Replace UTF-16LE "Firefox" -> "Seafari" (same 7-char length!) and "Mozilla" -> "Seafari" in .rsrc
+    rsrc_end = len(data)
+    rsrc_slice = bytes(data[rsrc_raw:rsrc_end])
+    rsrc_slice = rsrc_slice.replace("Firefox".encode("utf-16le"), "Seafari".encode("utf-16le"))
+    rsrc_slice = rsrc_slice.replace(
+        "Mozilla Corporation".encode("utf-16le"),
+        "Inled Group        ".encode("utf-16le"),
+    )
+    rsrc_slice = rsrc_slice.replace("firefox.exe".encode("utf-16le"), "seafari.exe".encode("utf-16le"))
+    data[rsrc_raw:rsrc_end] = rsrc_slice
+
+    with open(exe_path, "wb") as f:
+        f.write(data)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Patch extracted Windows Firefox into Seafari.")
     parser.add_argument("--firefox-dir", required=True, help="Path to extracted Firefox directory (core/)")
@@ -584,7 +880,7 @@ def main():
     seven_zip = find_7z()
     print(f"[*] Using 7-Zip binary: {seven_zip}")
 
-    # Ensure chrome/ tree and seafari.ico are up to date
+    # Ensure chrome/ tree and multi-size seafari.ico are up to date
     subprocess.run([sys.executable, os.path.join(repo_root, "scripts", "init_chrome_tree.py")], check=True)
 
     # 1. Distribution & Extensions
@@ -593,7 +889,9 @@ def main():
     os.makedirs(ext_dir, exist_ok=True)
 
     patch_ublock_xpi(args.ublock_xpi, os.path.join(ext_dir, "uBlock0@raymondhill.net.xpi"))
-    shutil.copy2(args.atbc_xpi, os.path.join(ext_dir, "ATBC@EasonWong.xpi"))
+    atbc_dst = os.path.join(ext_dir, "ATBC@EasonWong.xpi")
+    if os.path.abspath(args.atbc_xpi) != os.path.abspath(atbc_dst):
+        shutil.copy2(args.atbc_xpi, atbc_dst)
 
     tab_overview_dst = os.path.join(firefox_dir, "tab-overview")
     if os.path.exists(tab_overview_dst):
@@ -604,6 +902,8 @@ def main():
         "policies": {
             "DisableAppUpdate": True,
             "DontCheckDefaultBrowser": True,
+            "OverrideFirstRunPage": "",
+            "OverridePostUpdatePage": "",
             "SearchEngines": {"Default": "Google"},
             "Preferences": {
                 "extensions.webextensions.remote": False,
@@ -611,6 +911,15 @@ def main():
                 "toolkit.legacyUserProfileCustomizations.stylesheets": True,
                 "xpinstall.signatures.required": False,
                 "widget.windows.mica": False,
+                "termsofuse.bypassNotification": True,
+                "termsofuse.acceptedVersion": 999,
+                "termsofuse.acceptedDate": "1700000000000",
+                "termsofuse.firstAcceptedDate": "1700000000000",
+                "browser.aboutwelcome.enabled": False,
+                "browser.nova.enabled": False,
+                "browser.newtabpage.activity-stream.nova.enabled": False,
+                "datareporting.policy.dataSubmissionPolicyBypassNotification": True,
+                "datareporting.policy.firstRunURL": "",
                 "keyword.enabled": True,
                 "browser.search.suggest.enabled": True,
                 "browser.urlbar.suggest.searches": True,
@@ -702,12 +1011,37 @@ def main():
     patch_application_ini(os.path.join(firefox_dir, "application.ini"))
     patch_application_ini(os.path.join(firefox_dir, "browser", "application.ini"))
 
-    # 6. Copy seafari.ico, seafari.png, and create seafari.exe launcher copy
-    shutil.copy2(os.path.join(repo_root, "seafari.ico"), os.path.join(firefox_dir, "seafari.ico"))
-    shutil.copy2(os.path.join(repo_root, "seafari.png"), os.path.join(firefox_dir, "seafari.png"))
+    # 6. Remove *.sig signature files so modified PE resources in firefox.exe/seafari.exe are accepted
+    for root_dir, _, files in os.walk(firefox_dir):
+        for file in files:
+            if file.endswith(".sig"):
+                try:
+                    os.remove(os.path.join(root_dir, file))
+                except OSError:
+                    pass
+
+    # 7. Replace Windows VisualElements icons & manifests
+    png_src = os.path.join(repo_root, "seafari.png")
+    ico_src = os.path.join(repo_root, "seafari.ico")
+    shutil.copy2(ico_src, os.path.join(firefox_dir, "seafari.ico"))
+    shutil.copy2(png_src, os.path.join(firefox_dir, "seafari.png"))
+
+    vis_dir = os.path.join(firefox_dir, "browser", "VisualElements")
+    if os.path.exists(vis_dir):
+        for vfile in os.listdir(vis_dir):
+            if vfile.endswith(".png"):
+                shutil.copy2(png_src, os.path.join(vis_dir, vfile))
+
+    ff_manifest = os.path.join(firefox_dir, "firefox.VisualElementsManifest.xml")
+    seafari_manifest = os.path.join(firefox_dir, "seafari.VisualElementsManifest.xml")
+    if os.path.exists(ff_manifest):
+        shutil.copy2(ff_manifest, seafari_manifest)
+
+    # 8. Patch Win32 PE resources (icons + version strings) in firefox.exe and copy to seafari.exe
     ff_exe = os.path.join(firefox_dir, "firefox.exe")
     seafari_exe = os.path.join(firefox_dir, "seafari.exe")
     if os.path.exists(ff_exe):
+        patch_pe_resources_inplace(ff_exe, png_src)
         shutil.copy2(ff_exe, seafari_exe)
 
     print("[+] Successfully patched Windows Firefox build into Seafari!")

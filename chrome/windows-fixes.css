@@ -2,26 +2,63 @@
    SEAFARI WINDOWS PORT - PLATFORM ADAPTATIONS & FIXES
    ============================================================ */
 
-/* 1. Reserve space in #nav-bar for the 3 macOS-style window control buttons
-      (Linux uses -moz-gtk-csd-* media queries which do not match on Windows) */
+/* 1. Reserve space on the LEFT of #nav-bar for the 3 macOS traffic light buttons
+      and remove the 24px GTK CSD top border-radius that causes black corner glitches on Windows DWM */
 :root[tabsintitlebar]:not([inFullscreen]) #nav-bar,
 :root[customtitlebar]:not([inFullscreen]) #nav-bar {
-    padding-right: 96px !important;
+    padding-left: 88px !important;
+    padding-right: 8px !important;
+    border-top-left-radius: 0 !important;
+    border-top-right-radius: 0 !important;
 }
 
-/* 2. Replace Windows Segoe Fluent / MDL2 caption glyphs with Seafari macOS traffic lights */
+:root[tabsintitlebar][inFullscreen] #nav-bar,
+:root[customtitlebar][inFullscreen] #nav-bar {
+    padding-left: 50px !important;
+    padding-right: 8px !important;
+    border-top-left-radius: 0 !important;
+    border-top-right-radius: 0 !important;
+}
+
+/* Make #nav-bar draggable as the top titlebar on Windows while keeping interactive controls clickable */
+#nav-bar {
+    -moz-window-dragging: drag !important;
+}
+
+#nav-bar hbox[seafari-pill],
+#nav-bar toolbarbutton,
+#nav-bar toolbaritem,
+#nav-bar #urlbar,
+#nav-bar #urlbar-container,
+#nav-bar .titlebar-buttonbox-container,
+#nav-bar .titlebar-buttonbox,
+#nav-bar .titlebar-button {
+    -moz-window-dragging: no-drag !important;
+}
+
+/* 2. Replace Windows Segoe Fluent / MDL2 caption glyphs with Seafari macOS traffic lights on the LEFT */
+#nav-bar > .titlebar-buttonbox-container,
 #nav-bar .titlebar-buttonbox-container,
 #titlebar .titlebar-buttonbox-container {
     -moz-appearance: none !important;
     appearance: none !important;
-    padding: 0 3px 0 4px !important;
+    padding: 0 4px !important;
     position: absolute !important;
-    right: 8px !important;
+    left: 10px !important;
+    right: auto !important;
     top: 0 !important;
     height: 100% !important;
     display: flex !important;
     align-items: center !important;
+    visibility: visible !important;
+    order: -1 !important;
     z-index: 1000 !important;
+}
+
+/* Hide duplicate window controls in #TabsToolbar and #toolbar-menubar since #nav-bar is the top bar */
+#TabsToolbar > .titlebar-buttonbox-container,
+#toolbar-menubar > .titlebar-buttonbox-container {
+    display: none !important;
 }
 
 #nav-bar .titlebar-buttonbox,
@@ -30,7 +67,29 @@
     appearance: none !important;
     -moz-default-appearance: none !important;
     display: flex !important;
+    flex-direction: row !important;
     align-items: center !important;
+}
+
+/* macOS traffic light order: Close (Red) -> Minimize (Yellow) -> Maximize/Restore (Green) */
+#nav-bar .titlebar-close,
+#titlebar .titlebar-close {
+    order: 1 !important;
+    -moz-box-ordinal-group: 1 !important;
+}
+
+#nav-bar .titlebar-min,
+#titlebar .titlebar-min {
+    order: 2 !important;
+    -moz-box-ordinal-group: 2 !important;
+}
+
+#nav-bar .titlebar-max,
+#nav-bar .titlebar-restore,
+#titlebar .titlebar-max,
+#titlebar .titlebar-restore {
+    order: 3 !important;
+    -moz-box-ordinal-group: 3 !important;
 }
 
 #nav-bar .titlebar-button,
@@ -144,3 +203,65 @@
 #fxa-toolbar-menu-button image {
     list-style-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath fill='currentColor' d='m8 1a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7zm0 1a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zm-5 8c-1.1 0-2 0.9-2 2v2a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2c0-1.1-0.9-2-2-2h-10zm0 1h10a1 1 0 0 1 1 1v1h-12v-1a1 1 0 0 1 1-1z'/%3E%3C/svg%3E") !important;
 }
+
+/* 5. Never auto-pin uBlock Origin to the toolbar/URL bar (kept accessible via puzzle piece menu) */
+#nav-bar #ublock0_raymondhill_net-browser-action,
+#nav-bar [id*="ublock"][id*="browser-action"],
+#nav-bar #ublock0_raymondhill_net-BAP {
+    display: none !important;
+    visibility: collapse !important;
+}
+
+/* 6. macOS Separate Window Moving Animation with Liquid Glass Transparency */
+:root {
+    --seafari-drag-dx: 0px;
+    --seafari-drag-dy: 0px;
+}
+
+#navigator-toolbox,
+#browser,
+#tabbrowser-tabbox {
+    transition:
+        transform 260ms cubic-bezier(0.22, 1, 0.36, 1),
+        opacity 220ms cubic-bezier(0.22, 1, 0.36, 1),
+        filter 220ms cubic-bezier(0.22, 1, 0.36, 1),
+        border-radius 260ms cubic-bezier(0.22, 1, 0.36, 1),
+        box-shadow 260ms cubic-bezier(0.22, 1, 0.36, 1) !important;
+    transform-origin: center top !important;
+}
+
+:root[seafari-window-moving="true"] #navigator-toolbox {
+    background-color: color-mix(in srgb, var(--gnome-toolbar-background, #1e1e1e) 62%, transparent) !important;
+    backdrop-filter: blur(28px) saturate(190%) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.28),
+        0 10px 30px rgba(0, 0, 0, 0.22) !important;
+}
+
+:root[seafari-window-moving="true"] #navigator-toolbox #nav-bar,
+:root[seafari-window-moving="true"] #navigator-toolbox #TabsToolbar,
+:root[seafari-window-moving="true"] #navigator-toolbox #PersonalToolbar {
+    background-color: transparent !important;
+}
+
+:root[seafari-window-moving="true"] #nav-bar hbox[seafari-pill] {
+    background: color-mix(in srgb, var(--toolbar-color, currentColor) 14%, transparent) !important;
+    backdrop-filter: blur(24px) saturate(180%) !important;
+    box-shadow:
+        inset 0 1px 1px rgba(255, 255, 255, 0.35),
+        0 4px 14px rgba(0, 0, 0, 0.16) !important;
+    transform: translateY(-0.5px) scale(0.992) !important;
+    transition: all 180ms cubic-bezier(0.22, 1, 0.36, 1) !important;
+}
+
+:root[seafari-window-moving="true"] #browser {
+    transform: scale(0.988) translate3d(calc(var(--seafari-drag-dx, 0px) * -0.25), calc(var(--seafari-drag-dy, 0px) * -0.25), 0) !important;
+    opacity: 0.86 !important;
+    filter: saturate(1.18) brightness(1.03) !important;
+    border-radius: 14px !important;
+    box-shadow:
+        inset 0 0 0 1px rgba(255, 255, 255, 0.18),
+        0 18px 44px rgba(0, 0, 0, 0.32) !important;
+    overflow: hidden !important;
+}
+

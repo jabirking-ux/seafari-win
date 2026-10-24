@@ -57,9 +57,9 @@ Section "Seafari Browser" SecMain
 
   ; Create Start Menu and Desktop shortcuts
   CreateDirectory "$SMPROGRAMS\Seafari"
-  CreateShortCut "$SMPROGRAMS\Seafari\Seafari.lnk" "$INSTDIR\seafari.exe" "" "$INSTDIR\seafari.ico" 0
+  CreateShortCut "$SMPROGRAMS\Seafari\Seafari.lnk" "$INSTDIR\seafari.exe" "" "$INSTDIR\seafari.exe" 0
   CreateShortCut "$SMPROGRAMS\Seafari\Uninstall Seafari.lnk" "$INSTDIR\Uninstall.exe" "" "$INSTDIR\seafari.ico" 0
-  CreateShortCut "$DESKTOP\Seafari.lnk" "$INSTDIR\seafari.exe" "" "$INSTDIR\seafari.ico" 0
+  CreateShortCut "$DESKTOP\Seafari.lnk" "$INSTDIR\seafari.exe" "" "$INSTDIR\seafari.exe" 0
 SectionEnd
 
 Section "Uninstall"
