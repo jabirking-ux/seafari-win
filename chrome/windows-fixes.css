@@ -1,0 +1,146 @@
+/* ============================================================
+   SEAFARI WINDOWS PORT - PLATFORM ADAPTATIONS & FIXES
+   ============================================================ */
+
+/* 1. Reserve space in #nav-bar for the 3 macOS-style window control buttons
+      (Linux uses -moz-gtk-csd-* media queries which do not match on Windows) */
+:root[tabsintitlebar]:not([inFullscreen]) #nav-bar,
+:root[customtitlebar]:not([inFullscreen]) #nav-bar {
+    padding-right: 96px !important;
+}
+
+/* 2. Replace Windows Segoe Fluent / MDL2 caption glyphs with Seafari macOS traffic lights */
+#nav-bar .titlebar-buttonbox-container,
+#titlebar .titlebar-buttonbox-container {
+    -moz-appearance: none !important;
+    appearance: none !important;
+    padding: 0 3px 0 4px !important;
+    position: absolute !important;
+    right: 8px !important;
+    top: 0 !important;
+    height: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    z-index: 1000 !important;
+}
+
+#nav-bar .titlebar-buttonbox,
+#titlebar .titlebar-buttonbox {
+    -moz-appearance: none !important;
+    appearance: none !important;
+    -moz-default-appearance: none !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+#nav-bar .titlebar-button,
+#titlebar .titlebar-button,
+#nav-bar .titlebar-min,
+#nav-bar .titlebar-max,
+#nav-bar .titlebar-restore,
+#nav-bar .titlebar-close,
+#titlebar .titlebar-min,
+#titlebar .titlebar-max,
+#titlebar .titlebar-restore,
+#titlebar .titlebar-close {
+    -moz-appearance: none !important;
+    appearance: none !important;
+    -moz-default-appearance: none !important;
+    content: none !important;
+    font-size: 0 !important;
+    color: transparent !important;
+    border: none !important;
+    border-radius: 100px !important;
+    height: 16px !important;
+    width: 16px !important;
+    min-height: 16px !important;
+    min-width: 16px !important;
+    max-height: 16px !important;
+    max-width: 16px !important;
+    margin: 0 4px !important;
+    padding: 0 !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+    background-size: contain !important;
+    --inactive-titlebar-opacity: 1 !important;
+}
+
+#nav-bar .titlebar-button::before,
+#titlebar .titlebar-button::before,
+#nav-bar .titlebar-button .toolbarbutton-icon,
+#titlebar .titlebar-button .toolbarbutton-icon {
+    display: none !important;
+    content: none !important;
+    opacity: 0 !important;
+    appearance: none !important;
+}
+
+/* Only show maximize when unmaximized, and restore when maximized */
+:root:not([sizemode="maximized"]) #nav-bar .titlebar-restore,
+:root:not([sizemode="maximized"]) #titlebar .titlebar-restore {
+    display: none !important;
+}
+
+:root[sizemode="maximized"] #nav-bar .titlebar-max,
+:root[sizemode="maximized"] #titlebar .titlebar-max {
+    display: none !important;
+}
+
+/* 3. Keep #toolbar-menubar hidden on Windows (matching Linux global-menu behavior) */
+#toolbar-menubar[autohide="true"][inactive="true"],
+#toolbar-menubar:not([open="true"]) {
+    display: none !important;
+    min-height: 0 !important;
+    height: 0 !important;
+    max-height: 0 !important;
+    overflow: hidden !important;
+}
+
+/* 4. Modern CSS Flexbox support for Firefox 113+ / 158+ liquid glass pills */
+#nav-bar-customization-target {
+    display: flex !important;
+    align-items: center !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+}
+
+#nav-bar-customization-target > toolbarspring,
+#nav-bar hbox[seafari-pill] > toolbarspring {
+    display: none !important;
+}
+
+#nav-bar hbox[seafari-pill] {
+    display: flex !important;
+    align-items: center !important;
+}
+
+#seafari-pill-urlbar {
+    flex: 1 1 auto !important;
+    min-width: 120px !important;
+}
+
+#seafari-pill-urlbar #urlbar-container {
+    flex: 1 1 auto !important;
+    width: auto !important;
+    min-width: 100px !important;
+}
+
+#seafari-pill-left,
+#seafari-pill-extensions,
+#seafari-pill-menu {
+    flex: 0 0 auto !important;
+}
+
+#nav-bar hbox[seafari-pill] toolbarbutton:not(#urlbar-zoom-button):not(.subviewbutton):not(.titlebar-button):not(.close-button),
+#nav-bar hbox[seafari-pill] toolbaritem:not(#urlbar-zoom-button):not(.subviewbutton):not(.titlebar-button):not(.close-button) {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+/* Support both #fxa-toolbar-button and #fxa-toolbar-menu-button */
+#fxa-toolbar-menu-button,
+#fxa-toolbar-menu-button .toolbarbutton-icon,
+#fxa-toolbar-menu-button image {
+    list-style-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath fill='currentColor' d='m8 1a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7zm0 1a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zm-5 8c-1.1 0-2 0.9-2 2v2a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2c0-1.1-0.9-2-2-2h-10zm0 1h10a1 1 0 0 1 1 1v1h-12v-1a1 1 0 0 1 1-1z'/%3E%3C/svg%3E") !important;
+}

@@ -1,0 +1,10 @@
+build_workspace/
+build_cache_*/
+*.zip
+*.exe
+*.deb
+*.rpm
+*.pkg.tar.zst
+*.AppImage
+__pycache__/
+*.pyc

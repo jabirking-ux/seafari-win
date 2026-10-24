@@ -1,0 +1,29 @@
+{
+  "manifest_version": 2,
+  "name": "Seafari",
+  "version": "1.0",
+  "description": "Seafari start page, favorites, and tab overview.",
+  "icons": {
+    "48": "seafari.png",
+    "96": "seafari.png"
+  },
+  "applications": {
+    "gecko": {
+      "id": "tab-overview@seafari.org"
+    }
+  },
+  "permissions": [
+    "tabs",
+    "storage",
+    "history",
+    "<all_urls>"
+  ],
+  "background": {
+    "scripts": ["background.js"],
+    "persistent": true
+  },
+  "browser_action": {
+    "default_title": "Tab Overview",
+    "default_icon": "seafari.png"
+  }
+}

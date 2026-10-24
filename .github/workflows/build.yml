@@ -1,0 +1,150 @@
+name: Build and Release Seafari for Windows
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # Run daily at 00:00 UTC
+  workflow_dispatch:
+    inputs:
+      force_build:
+        description: 'Force rebuild even if Firefox and upstream Seafari versions have not changed'
+        required: false
+        default: 'false'
+        type: string
+  push:
+    branches:
+      - main
+      - master
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' || contains(github.event.head_commit.message, '[RELEASE]')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for Firefox Windows & Upstream Seafari updates
+        id: check_updates
+        run: |
+          set -euo pipefail
+
+          echo "[*] Querying Mozilla product-details API for latest Firefox win64 version..."
+          FF_VERSION=$(curl -fsSL "https://product-details.mozilla.org/1.0/firefox_versions.json" | jq -r '.LATEST_FIREFOX_VERSION')
+          if [ -z "$FF_VERSION" ] || [ "$FF_VERSION" = "null" ]; then
+            echo "ERROR: Failed to detect latest Firefox version"
+            exit 1
+          fi
+          echo "Latest Firefox win64 version: $FF_VERSION"
+
+          LAST_VERSION=""
+          if [ -f "last_version.txt" ]; then
+            LAST_VERSION=$(tr -d '[:space:]' < last_version.txt)
+          fi
+          echo "Last built Firefox version: ${LAST_VERSION:-<none>}"
+
+          echo "[*] Checking latest commit on upstream InledGroup/seafari..."
+          UPSTREAM_SHA=$(git ls-remote https://github.com/InledGroup/seafari.git HEAD | awk '{print $1}')
+          echo "Latest upstream Seafari commit: $UPSTREAM_SHA"
+
+          LAST_UPSTREAM_SHA=""
+          if [ -f "last_upstream_commit.txt" ]; then
+            LAST_UPSTREAM_SHA=$(tr -d '[:space:]' < last_upstream_commit.txt)
+          fi
+          echo "Last synced upstream commit: ${LAST_UPSTREAM_SHA:-<none>}"
+
+          FORCE_BUILD="${{ github.event.inputs.force_build || 'false' }}"
+          COMMIT_MSG=$(git log -1 --pretty=%B || true)
+          if [[ "$COMMIT_MSG" == *"[RELEASE]"* ]]; then
+            FORCE_BUILD="true"
+          fi
+
+          SHOULD_BUILD="false"
+          BUILD_REASON=""
+          if [ "$FORCE_BUILD" = "true" ]; then
+            SHOULD_BUILD="true"
+            BUILD_REASON="Manual/forced trigger"
+          elif [ "$FF_VERSION" != "$LAST_VERSION" ]; then
+            SHOULD_BUILD="true"
+            BUILD_REASON="New Firefox version ($LAST_VERSION -> $FF_VERSION)"
+          elif [ -n "$UPSTREAM_SHA" ] && [ "$UPSTREAM_SHA" != "$LAST_UPSTREAM_SHA" ]; then
+            SHOULD_BUILD="true"
+            BUILD_REASON="Upstream Seafari updated (${LAST_UPSTREAM_SHA:0:7} -> ${UPSTREAM_SHA:0:7})"
+          fi
+
+          echo "should_build=$SHOULD_BUILD" >> "$GITHUB_OUTPUT"
+          echo "ff_version=$FF_VERSION" >> "$GITHUB_OUTPUT"
+          echo "upstream_sha=$UPSTREAM_SHA" >> "$GITHUB_OUTPUT"
+          echo "build_reason=$BUILD_REASON" >> "$GITHUB_OUTPUT"
+
+          if [ "$SHOULD_BUILD" = "false" ]; then
+            echo "[+] Up to date (Firefox $FF_VERSION, Upstream ${UPSTREAM_SHA:0:7}). Exiting early."
+          else
+            echo "[*] Proceeding with build. Reason: $BUILD_REASON"
+          fi
+
+      - name: Sync latest assets from upstream InledGroup/seafari
+        if: steps.check_updates.outputs.should_build == 'true'
+        run: |
+          python3 scripts/sync_upstream.py
+
+      - name: Install build dependencies
+        if: steps.check_updates.outputs.should_build == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y p7zip-full nsis zip unzip curl jq python3
+
+      - name: Build Seafari for Windows (Portable ZIP & NSIS Installer)
+        if: steps.check_updates.outputs.should_build == 'true'
+        run: |
+          chmod +x build_seafari_win.sh
+          ./build_seafari_win.sh --firefox-version "${{ steps.check_updates.outputs.ff_version }}"
+
+      - name: Update version tracking files and commit to repository
+        if: steps.check_updates.outputs.should_build == 'true'
+        run: |
+          echo "${{ steps.check_updates.outputs.ff_version }}" > last_version.txt
+          echo "${{ steps.check_updates.outputs.upstream_sha }}" > last_upstream_commit.txt
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add last_version.txt last_upstream_commit.txt chrome/ MacTahoe/ tab-overview/ userChrome.css userContent.css customChrome.css newtab.html seafari.png seafari.ico build_seafari_linux.sh || true
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: update to Firefox ${{ steps.check_updates.outputs.ff_version }} (upstream ${{ steps.check_updates.outputs.upstream_sha }})"
+            git push origin HEAD
+          else
+            echo "No repository file changes to commit."
+          fi
+
+      - name: Publish GitHub Release
+        if: steps.check_updates.outputs.should_build == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.check_updates.outputs.ff_version }}
+          name: Seafari for Windows v${{ steps.check_updates.outputs.ff_version }}
+          body: |
+            ## Seafari for Windows v${{ steps.check_updates.outputs.ff_version }}
+
+            Automated Windows port build of [InledGroup/seafari](https://github.com/InledGroup/seafari).
+
+            - **Firefox Base Version:** `${{ steps.check_updates.outputs.ff_version }}` (`win64`)
+            - **Upstream Seafari Commit:** [`${{ steps.check_updates.outputs.upstream_sha }}`](https://github.com/InledGroup/seafari/commit/${{ steps.check_updates.outputs.upstream_sha }})
+            - **Build Trigger:** ${{ steps.check_updates.outputs.build_reason }}
+
+            ### Downloads
+            - **`Seafari-Setup-${{ steps.check_updates.outputs.ff_version }}.exe`** — Windows Installer (installs to `%LOCALAPPDATA%\Programs\Seafari` and creates Start Menu & Desktop shortcuts)
+            - **`Seafari-Windows-${{ steps.check_updates.outputs.ff_version }}.zip`** — Portable Archive (extract anywhere and run `seafari.exe` or `firefox.exe`)
+          files: |
+            Seafari-Windows-${{ steps.check_updates.outputs.ff_version }}.zip
+            Seafari-Setup-${{ steps.check_updates.outputs.ff_version }}.exe
+          draft: false
+          prerelease: false
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
