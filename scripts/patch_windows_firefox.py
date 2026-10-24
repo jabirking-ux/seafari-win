@@ -182,6 +182,8 @@ pref("termsofuse.firstAcceptedDate", "1700000000000");
 pref("browser.aboutwelcome.enabled", false);
 pref("browser.nova.enabled", false);
 pref("browser.newtabpage.activity-stream.nova.enabled", false);
+pref("toolkit.startup.max_resumed_crashes", -1);
+pref("browser.sessionstore.resume_from_crash", true);
 pref("datareporting.policy.dataSubmissionPolicyBypassNotification", true);
 pref("datareporting.policy.firstRunURL", "");
 pref("browser.messaging-system.whatsNewPanel.enabled", false);
@@ -261,6 +263,8 @@ def extract_seafari_cfg_from_linux_script(linux_script_path):
         '  pref("browser.aboutwelcome.enabled", false);\n'
         '  pref("browser.nova.enabled", false);\n'
         '  pref("browser.newtabpage.activity-stream.nova.enabled", false);\n'
+        '  pref("toolkit.startup.max_resumed_crashes", -1);\n'
+        '  pref("browser.sessionstore.resume_from_crash", true);\n'
         '  pref("datareporting.policy.dataSubmissionPolicyBypassNotification", true);\n'
         '  pref("datareporting.policy.firstRunURL", "");'
     )
@@ -272,6 +276,22 @@ def extract_seafari_cfg_from_linux_script(linux_script_path):
     # Inject Windows profile theme auto-sync & immediate nsIStyleSheetService registration right after log("Seafari Autoconfig initialization started");
     profile_sync_js = """
 try {
+  // Set explicit AppUserModelID on Windows shell for taskbar identification & grouping
+  var { ctypes } = ChromeUtils.importESModule("resource://gre/modules/ctypes.sys.mjs");
+  var shell32 = ctypes.open("shell32.dll");
+  var SetCurrentProcessExplicitAppUserModelIDFn = shell32.declare(
+    "SetCurrentProcessExplicitAppUserModelID",
+    ctypes.winapi_abi,
+    ctypes.long,
+    ctypes.jschar.ptr
+  );
+  SetCurrentProcessExplicitAppUserModelIDFn("InledGroup.Seafari");
+  log("Explicit AppUserModelID set to InledGroup.Seafari");
+} catch (aumidErr) {
+  log("AppUserModelID init error: " + aumidErr);
+}
+
+try {
   // Ensure onboarding/Terms-of-Use/Nova prefs are set on the user branch too
   var pb = Components.classes["@mozilla.org/preferences-service;1"]
                      .getService(Components.interfaces.nsIPrefBranch);
@@ -282,6 +302,8 @@ try {
   pb.setBoolPref("browser.aboutwelcome.enabled", false);
   pb.setBoolPref("browser.nova.enabled", false);
   pb.setBoolPref("browser.newtabpage.activity-stream.nova.enabled", false);
+  pb.setIntPref("toolkit.startup.max_resumed_crashes", -1);
+  pb.setBoolPref("browser.sessionstore.resume_from_crash", true);
   pb.setBoolPref("datareporting.policy.dataSubmissionPolicyBypassNotification", true);
 } catch (prefErr) {}
 
@@ -386,8 +408,25 @@ try {
         'if (pillUrlbar) {\n      pillUrlbar.setAttribute("flex", "1");\n      forceStyle(pillUrlbar, "-moz-box-flex", "1");\n      forceStyle(pillUrlbar, "flex", "1 1 auto");\n      if (urlbarEl) { urlbarEl.setAttribute("flex", "1"); forceStyle(urlbarEl, "flex", "1 1 auto"); }\n    }',
     )
 
-    # Inject macOS-style window moving animation + liquid glass transparency detector
+    # Inject macOS-style window moving animation + liquid glass transparency + 2-second startup hold + taskbar grouping
     window_move_js = """
+      // --- Windows AppUserModelID & Taskbar Grouping ---
+      try {
+        var winTaskbar = Components.classes["@mozilla.org/windows-taskbar;1"]
+                                   .getService(Components.interfaces.nsIWinTaskbar);
+        if (winTaskbar) {
+          winTaskbar.defaultGroupId = "InledGroup.Seafari";
+          winTaskbar.setGroupIdForWindow(win, "InledGroup.Seafari");
+        }
+      } catch (tbErr) {}
+
+      // Ensure window document title never says Firefox
+      try {
+        if (doc && doc.title && doc.title.indexOf("Firefox") !== -1) {
+          doc.title = doc.title.replace(/Mozilla Firefox/g, "Seafari").replace(/Firefox/g, "Seafari");
+        }
+      } catch (titleErr) {}
+
       // --- macOS Window Move / Drag Liquid Glass Transparency & Spring Animation ---
       try {
         var lastWinX = win.screenX;
@@ -437,7 +476,7 @@ try {
         function setWinAlpha(alpha) {
           try {
             var h = resolveHwnd();
-            if (!h || h.isNull()) return;
+            if (!h || h.isNull()) return false;
             var GWL_EXSTYLE = -20;
             var WS_EX_LAYERED = 0x00080000;
             var LWA_ALPHA = 0x02;
@@ -450,7 +489,41 @@ try {
             } else {
               SetLayeredWindowAttributesFn(h, 0, 255, LWA_ALPHA);
             }
-          } catch (e) {}
+            return true;
+          } catch (e) {
+            return false;
+          }
+        }
+
+        // 2-Second Startup Hold: Keep the initial window hidden/transparent for 2 seconds while startup finishes
+        if (!globalThis._seafariStartupComplete) {
+          globalThis._seafariStartupComplete = true;
+          doc.documentElement.setAttribute("seafari-prelaunch", "true");
+          setWinAlpha(0);
+
+          var prelaunchRetries = 0;
+          var prelaunchRetryTimer = win.setInterval(function() {
+            prelaunchRetries++;
+            if (setWinAlpha(0) || prelaunchRetries > 20) {
+              win.clearInterval(prelaunchRetryTimer);
+            }
+          }, 50);
+
+          win.setTimeout(function() {
+            win.clearInterval(prelaunchRetryTimer);
+            doc.documentElement.removeAttribute("seafari-prelaunch");
+            var curA = 0;
+            var fadeTimer = win.setInterval(function() {
+              curA += 32;
+              if (curA >= 255) {
+                win.clearInterval(fadeTimer);
+                setWinAlpha(255);
+              } else {
+                setWinAlpha(curA);
+              }
+            }, 16);
+            try { win.focus(); } catch(e) {}
+          }, 2000);
         }
 
         win.setInterval(function() {
@@ -486,6 +559,10 @@ try {
         'if (urlbar) {\n        urlbar.addEventListener("focusin", function() { setHidden(false); updateToolbarLuminance(); });',
         window_move_js + '\n      if (urlbar) {\n        urlbar.addEventListener("focusin", function() { setHidden(false); updateToolbarLuminance(); });',
         1,
+    )
+    cfg = cfg.replace(
+        '  var observer = {\n    observe: function(aSubject, aTopic, aData) {\n      var window = aSubject;\n      window.addEventListener("load", function() {\n        if (window.location.href === "chrome://browser/content/browser.xhtml") {\n          setupUI(window);\n        }\n      }, { once: true });\n    }\n  };\n\n  observerService.addObserver(observer, "domwindowopened", false);',
+        '  var observer = {\n    observe: function(aSubject, aTopic, aData) {\n      var window = aSubject;\n      try {\n        if (!globalThis._seafariStartupComplete && window.document && window.document.documentElement) {\n          window.document.documentElement.setAttribute("seafari-prelaunch", "true");\n        }\n      } catch (e) {}\n      window.addEventListener("load", function() {\n        if (window.location.href === "chrome://browser/content/browser.xhtml") {\n          setupUI(window);\n        }\n      }, { once: true });\n    }\n  };\n\n  observerService.addObserver(observer, "domwindowopened", false);',
     )
     return cfg
 
@@ -853,13 +930,26 @@ def patch_pe_resources_inplace(exe_path, png_path):
                 struct.pack_into("<I", data, i_doff + 4, len(replacement))
                 struct.pack_into("<I", data, grp_entry_off + 8, len(replacement))
 
+    # Replace UTF-8 manifest application identity and description
+    data = bytearray(
+        bytes(data)
+        .replace(b'name="Firefox"', b'name="Seafari"')
+        .replace(b"<description>Firefox</description>", b"<description>Seafari</description>")
+        .replace(b'"Firefox"', b'"Seafari"')
+    )
+
     # Replace UTF-16LE "Firefox" -> "Seafari" (same 7-char length!) and "Mozilla" -> "Seafari" in .rsrc
     rsrc_end = len(data)
     rsrc_slice = bytes(data[rsrc_raw:rsrc_end])
+    rsrc_slice = rsrc_slice.replace("Mozilla Firefox".encode("utf-16le"), "Seafari Browser".encode("utf-16le"))
     rsrc_slice = rsrc_slice.replace("Firefox".encode("utf-16le"), "Seafari".encode("utf-16le"))
     rsrc_slice = rsrc_slice.replace(
         "Mozilla Corporation".encode("utf-16le"),
         "Inled Group        ".encode("utf-16le"),
+    )
+    rsrc_slice = rsrc_slice.replace(
+        "Mozilla Foundation".encode("utf-16le"),
+        "Inled Group       ".encode("utf-16le"),
     )
     rsrc_slice = rsrc_slice.replace("firefox.exe".encode("utf-16le"), "seafari.exe".encode("utf-16le"))
     data[rsrc_raw:rsrc_end] = rsrc_slice
@@ -1037,12 +1127,38 @@ def main():
     if os.path.exists(ff_manifest):
         shutil.copy2(ff_manifest, seafari_manifest)
 
-    # 8. Patch Win32 PE resources (icons + version strings) in firefox.exe and copy to seafari.exe
+    # 8. Patch Win32 PE resources (icons + version strings + manifest) in firefox.exe and seafari.exe
     ff_exe = os.path.join(firefox_dir, "firefox.exe")
     seafari_exe = os.path.join(firefox_dir, "seafari.exe")
     if os.path.exists(ff_exe):
         patch_pe_resources_inplace(ff_exe, png_src)
         shutil.copy2(ff_exe, seafari_exe)
+    elif os.path.exists(seafari_exe):
+        patch_pe_resources_inplace(seafari_exe, png_src)
+
+    # 9. Register InledGroup.Seafari in Windows Registry if running on Windows
+    if sys.platform == "win32":
+        try:
+            import winreg
+            ico_target = os.path.join(firefox_dir, "seafari.ico")
+            exe_target = os.path.join(firefox_dir, "seafari.exe")
+            key_path = r"Software\Classes\AppUserModelId\InledGroup.Seafari"
+            with winreg.CreateKey(winreg.HKEY_CURRENT_USER, key_path) as k:
+                winreg.SetValueEx(k, "DisplayName", 0, winreg.REG_SZ, "Seafari")
+                winreg.SetValueEx(k, "IconUri", 0, winreg.REG_SZ, ico_target if os.path.exists(ico_target) else f"{exe_target},0")
+                winreg.SetValueEx(k, "IconBackgroundColor", 0, winreg.REG_DWORD, 0)
+                winreg.SetValueEx(k, "ShowInNewInstall", 0, winreg.REG_DWORD, 1)
+
+            smi_path = r"Software\Clients\StartMenuInternet\Seafari"
+            with winreg.CreateKey(winreg.HKEY_CURRENT_USER, smi_path) as k:
+                winreg.SetValueEx(k, "", 0, winreg.REG_SZ, "Seafari")
+            with winreg.CreateKey(winreg.HKEY_CURRENT_USER, smi_path + r"\Capabilities") as k:
+                winreg.SetValueEx(k, "ApplicationDescription", 0, winreg.REG_SZ, "Seafari Browser")
+                winreg.SetValueEx(k, "ApplicationName", 0, winreg.REG_SZ, "Seafari")
+                winreg.SetValueEx(k, "ApplicationIcon", 0, winreg.REG_SZ, f"{exe_target},0")
+            print("[*] Successfully registered InledGroup.Seafari in Windows Registry")
+        except Exception as reg_err:
+            print(f"[!] Warning: Could not register AppUserModelId in registry: {reg_err}")
 
     print("[+] Successfully patched Windows Firefox build into Seafari!")
 

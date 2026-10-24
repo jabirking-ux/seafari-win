@@ -53,6 +53,20 @@ Section "Seafari Browser" SecMain
   WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Seafari" "NoModify" 1
   WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Seafari" "NoRepair" 1
 
+  ; Register AppUserModelId for Windows Taskbar identification
+  WriteRegStr HKCU "Software\Classes\AppUserModelId\InledGroup.Seafari" "DisplayName" "Seafari"
+  WriteRegStr HKCU "Software\Classes\AppUserModelId\InledGroup.Seafari" "IconUri" "$INSTDIR\seafari.ico"
+  WriteRegDWORD HKCU "Software\Classes\AppUserModelId\InledGroup.Seafari" "IconBackgroundColor" 0
+  WriteRegDWORD HKCU "Software\Classes\AppUserModelId\InledGroup.Seafari" "ShowInNewInstall" 1
+
+  ; Register as Windows Internet Browser client
+  WriteRegStr HKCU "Software\Clients\StartMenuInternet\Seafari" "" "Seafari"
+  WriteRegStr HKCU "Software\Clients\StartMenuInternet\Seafari\Capabilities" "ApplicationDescription" "Seafari Browser"
+  WriteRegStr HKCU "Software\Clients\StartMenuInternet\Seafari\Capabilities" "ApplicationName" "Seafari"
+  WriteRegStr HKCU "Software\Clients\StartMenuInternet\Seafari\Capabilities" "ApplicationIcon" "$INSTDIR\seafari.exe,0"
+  WriteRegStr HKCU "Software\Clients\StartMenuInternet\Seafari\DefaultIcon" "" "$INSTDIR\seafari.exe,0"
+  WriteRegStr HKCU "Software\Clients\StartMenuInternet\Seafari\shell\open\command" "" '"$INSTDIR\seafari.exe"'
+
   WriteUninstaller "$INSTDIR\Uninstall.exe"
 
   ; Create Start Menu and Desktop shortcuts
@@ -70,6 +84,8 @@ Section "Uninstall"
 
   RMDir /r "$INSTDIR"
 
+  DeleteRegKey HKCU "Software\Classes\AppUserModelId\InledGroup.Seafari"
+  DeleteRegKey HKCU "Software\Clients\StartMenuInternet\Seafari"
   DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Seafari"
   DeleteRegKey HKCU "Software\InledGroup\Seafari"
 SectionEnd

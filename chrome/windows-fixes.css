@@ -265,3 +265,18 @@
     overflow: hidden !important;
 }
 
+/* 7. Initial Launch 2-Second Hold: hide initial window while rendering/styles settle, then smoothly reveal */
+:root[seafari-prelaunch],
+:root[seafari-prelaunch] #main-window,
+:root[seafari-prelaunch] #navigator-toolbox,
+:root[seafari-prelaunch] #browser {
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+
+:root {
+    transition: opacity 300ms cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+
