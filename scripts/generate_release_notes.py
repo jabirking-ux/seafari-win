@@ -56,14 +56,13 @@ Automated Windows native port of [InledGroup/seafari](https://github.com/InledGr
 ---
 
 ### What is Included and Key Updates
-- **Startup Blank/Black Window Fix**: Eliminated obsolete `seafari-prelaunch` CSS hiding rules so the window, browser chrome, and web content render completely on launch.
+- **Authentic Upstream Parity**: 1:1 synchronization with official upstream [InledGroup/seafari](https://github.com/InledGroup/seafari) macOS Safari UI theme, Start Page, Favorites, Privacy Report, and Reading List.
+- **DirectX/D3D11 Stability**: Eliminated unstable Win32 window layer attributes and prelaunch CSS hiding rules, ensuring instant, smooth, flicker-free rendering with genuine hardware acceleration.
 - **Zero-Flash 1.5-Second Startup Hold**: Dedicated native Win32 launcher (`seafari.exe`) holds launch for exactly 1.5 seconds prior to launching the browser, ensuring zero window flicker or split-second display before smoothly revealing.
-- **macOS Liquid Glass Drag Animation**: Dynamic OS-level translucency (`alpha = 224`) and inertia tilt lag (`--seafari-drag-dx`, `--seafari-drag-dy`) while dragging the window.
 - **Native Taskbar Identity**: Patched Win32 PE resources (`firefox.exe` & `seafari.exe`), dedicated multi-resolution `seafari.ico`, and `AppUserModelID = InledGroup.Seafari` ensuring the Windows Taskbar and Alt+Tab display **Seafari** instead of Firefox.
 - **Left-Hand Traffic Light Controls**: Authentic macOS close, minimize, and zoom buttons on the left with coordinated triad hover animations in both Dark and Light modes.
 - **Crash Reporter and Telemetry Neutralized**: Disabled `toolkit.crashreporter`, purged crash reporter helper binaries, and prevented crash popups and prompt dialogs.
 - **Clean Default Toolbar**: Auto-configured toolbar layout with uBlock Origin active in the background without cluttering the main navigation bar.
-- **Upstream 1:1 Parity**: Full synchronization with latest upstream assets (`MacTahoe/`, `tab-overview/`, contrast improvements, and new tab pages).
 
 ---
 

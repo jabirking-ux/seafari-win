@@ -371,28 +371,6 @@ try {
     copyDirRecursive(themeSrc, chromeDst);
     log("Synced seafari-theme to profile chrome directory: " + chromeDst.path);
   }
-
-  // Register userChrome.css and userContent.css immediately via nsIStyleSheetService
-  // so the Safari theme is active on the very first launch without requiring a restart.
-  var sss = Components.classes["@mozilla.org/content/style-sheet-service;1"]
-                      .getService(Components.interfaces.nsIStyleSheetService);
-  var ioSvc = Components.classes["@mozilla.org/network/io-service;1"]
-                        .getService(Components.interfaces.nsIIOService);
-  ["userChrome.css", "userContent.css"].forEach(function(cssName) {
-    try {
-      var cssFile = chromeDst.clone();
-      cssFile.append(cssName);
-      if (cssFile.exists()) {
-        var cssURI = ioSvc.newFileURI(cssFile);
-        if (!sss.sheetRegistered(cssURI, sss.USER_SHEET)) {
-          sss.loadAndRegisterSheet(cssURI, sss.USER_SHEET);
-          log("Registered " + cssName + " via nsIStyleSheetService");
-        }
-      }
-    } catch (cssErr) {
-      log("Error registering " + cssName + ": " + cssErr);
-    }
-  });
 } catch (syncErr) {
   log("Profile theme sync error: " + syncErr);
 }
@@ -432,7 +410,7 @@ try {
         'if (pillUrlbar) {\n      pillUrlbar.setAttribute("flex", "1");\n      forceStyle(pillUrlbar, "-moz-box-flex", "1");\n      forceStyle(pillUrlbar, "flex", "1 1 auto");\n      if (urlbarEl) { urlbarEl.setAttribute("flex", "1"); forceStyle(urlbarEl, "flex", "1 1 auto"); }\n    }',
     )
 
-    # Inject macOS-style window moving animation + liquid glass transparency + 2-second startup hold + taskbar grouping
+    # Inject Windows taskbar grouping & document title
     window_move_js = """
       // --- Windows AppUserModelID & Taskbar Grouping ---
       try {
@@ -450,103 +428,6 @@ try {
           doc.title = doc.title.replace(/Mozilla Firefox/g, "Seafari").replace(/Firefox/g, "Seafari");
         }
       } catch (titleErr) {}
-
-      // --- macOS Window Move / Drag Liquid Glass Transparency & Spring Animation ---
-      try {
-        var lastWinX = win.screenX;
-        var lastWinY = win.screenY;
-        var moveTimeout = null;
-        var isMoving = false;
-        var ctypesHwnd = null;
-        var SetLayeredWindowAttributesFn = null;
-        var GetWindowLongWFn = null;
-        var SetWindowLongWFn = null;
-        var FindWindowExWFn = null;
-        var GetWindowThreadProcessIdFn = null;
-        var GetCurrentProcessIdFn = null;
-
-        try {
-          var { ctypes } = ChromeUtils.importESModule("resource://gre/modules/ctypes.sys.mjs");
-          var user32 = ctypes.open("user32.dll");
-          var kernel32 = ctypes.open("kernel32.dll");
-          GetWindowLongWFn = user32.declare("GetWindowLongW", ctypes.winapi_abi, ctypes.long, ctypes.voidptr_t, ctypes.int);
-          SetWindowLongWFn = user32.declare("SetWindowLongW", ctypes.winapi_abi, ctypes.long, ctypes.voidptr_t, ctypes.int, ctypes.long);
-          SetLayeredWindowAttributesFn = user32.declare("SetLayeredWindowAttributes", ctypes.winapi_abi, ctypes.int, ctypes.voidptr_t, ctypes.uint32_t, ctypes.uint8_t, ctypes.uint32_t);
-          FindWindowExWFn = user32.declare("FindWindowExW", ctypes.winapi_abi, ctypes.voidptr_t, ctypes.voidptr_t, ctypes.voidptr_t, ctypes.jschar.ptr, ctypes.jschar.ptr);
-          GetWindowThreadProcessIdFn = user32.declare("GetWindowThreadProcessId", ctypes.winapi_abi, ctypes.uint32_t, ctypes.voidptr_t, ctypes.uint32_t.ptr);
-          GetCurrentProcessIdFn = kernel32.declare("GetCurrentProcessId", ctypes.winapi_abi, ctypes.uint32_t);
-        } catch (ctErr) {}
-
-        function resolveHwnd() {
-          if (ctypesHwnd && !ctypesHwnd.isNull()) return ctypesHwnd;
-          if (!FindWindowExWFn || !GetWindowThreadProcessIdFn || !GetCurrentProcessIdFn) return null;
-          try {
-            var myPid = GetCurrentProcessIdFn();
-            var cur = null;
-            var pidOut = new ctypes.uint32_t(0);
-            for (var i = 0; i < 60; i++) {
-              cur = FindWindowExWFn(null, cur, "MozillaWindowClass", null);
-              if (!cur || cur.isNull()) break;
-              GetWindowThreadProcessIdFn(cur, pidOut.address());
-              if (pidOut.value === myPid) {
-                ctypesHwnd = cur;
-                return ctypesHwnd;
-              }
-            }
-          } catch (e) {}
-          return null;
-        }
-
-        function setWinAlpha(alpha) {
-          try {
-            var h = resolveHwnd();
-            if (!h || h.isNull()) return false;
-            var GWL_EXSTYLE = -20;
-            var WS_EX_LAYERED = 0x00080000;
-            var LWA_ALPHA = 0x02;
-            var exStyle = GetWindowLongWFn(h, GWL_EXSTYLE);
-            if (alpha < 255) {
-              if ((exStyle & WS_EX_LAYERED) === 0) {
-                SetWindowLongWFn(h, GWL_EXSTYLE, exStyle | WS_EX_LAYERED);
-              }
-              SetLayeredWindowAttributesFn(h, 0, alpha, LWA_ALPHA);
-            } else {
-              SetLayeredWindowAttributesFn(h, 0, 255, LWA_ALPHA);
-            }
-            return true;
-          } catch (e) {
-            return false;
-          }
-        }
-
-        win.setInterval(function() {
-          try {
-            var cx = win.screenX;
-            var cy = win.screenY;
-            if (cx !== lastWinX || cy !== lastWinY) {
-              var dx = Math.max(-14, Math.min(14, cx - lastWinX));
-              var dy = Math.max(-14, Math.min(14, cy - lastWinY));
-              lastWinX = cx;
-              lastWinY = cy;
-              doc.documentElement.style.setProperty("--seafari-drag-dx", dx + "px");
-              doc.documentElement.style.setProperty("--seafari-drag-dy", dy + "px");
-              if (!isMoving) {
-                isMoving = true;
-                doc.documentElement.setAttribute("seafari-window-moving", "true");
-                setWinAlpha(224); // ~88% OS-level glass translucency while dragging
-              }
-              if (moveTimeout) win.clearTimeout(moveTimeout);
-              moveTimeout = win.setTimeout(function() {
-                isMoving = false;
-                doc.documentElement.removeAttribute("seafari-window-moving");
-                doc.documentElement.style.setProperty("--seafari-drag-dx", "0px");
-                doc.documentElement.style.setProperty("--seafari-drag-dy", "0px");
-                setWinAlpha(255);
-              }, 160);
-            }
-          } catch (e) {}
-        }, 16);
-      } catch (moveErr) {}
 """
     cfg = cfg.replace(
         'if (urlbar) {\n        urlbar.addEventListener("focusin", function() { setHidden(false); updateToolbarLuminance(); });',

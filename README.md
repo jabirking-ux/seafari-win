@@ -37,7 +37,7 @@ Seafari is based on **Mozilla Firefox**, giving you complete browsing freedom, c
 - **Genuine Windows Shell & Taskbar Identity**: Patched Win32 PE metadata (`VS_VERSIONINFO`, `RT_MANIFEST`, `RT_STRING`) and `AppUserModelID = "InledGroup.Seafari"` so Windows Taskbar, Task Manager, Alt+Tab, and Start Menu identify it as **"Seafari"** with the high-resolution macOS compass icon.
 - **1.5-Second Smooth Pre-Launch Hold**: Holds launch for 1.5 seconds while CSS stylesheets, XUL trees, and extensions finish loading offscreen, then reveals the browser with a fluid macOS spring zoom/fade-in.
 - **Zero Crash Reporter Nagging**: Seafari Crash Reporter and Breakpad telemetry daemons are completely disabled (`[Crash Reporter] Enabled=0`, `crashreporter.exe` and `pingsender.exe` purged from release).
-- **macOS Window Drag Animation**: Window dragging features dynamic inertia response with macOS liquid glass translucency (`SetLayeredWindowAttributes`).
+- **100% Upstream Parity & Hardware Acceleration**: Full synchronization with official upstream macOS Safari UI theme, Start Page, Favorites, and Privacy Report with stable DirectX/D3D11 hardware acceleration.
 - **Clean Safari Navbar**: uBlock Origin runs in the background for tracker blocking and NTP privacy statistics without cluttering the URL bar.
 
 ---
