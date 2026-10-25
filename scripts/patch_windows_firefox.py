@@ -192,6 +192,12 @@ pref("datareporting.policy.dataSubmissionEnabled", false);
 pref("toolkit.startup.max_resumed_crashes", -1);
 pref("browser.sessionstore.resume_from_crash", false);
 pref("browser.sessionstore.max_resumed_crashes", -1);
+pref("browser.sessionstore.interval", 60000);
+pref("browser.tabs.unloadOnLowMemory", true);
+pref("gfx.webrender.all", true);
+pref("network.http.speculative-parallel-limit", 0);
+pref("browser.cache.memory.enable", true);
+pref("browser.cache.disk.enable", true);
 pref("datareporting.policy.dataSubmissionPolicyBypassNotification", true);
 pref("datareporting.policy.firstRunURL", "");
 pref("browser.messaging-system.whatsNewPanel.enabled", false);
@@ -281,6 +287,12 @@ def extract_seafari_cfg_from_linux_script(linux_script_path):
         '  pref("toolkit.startup.max_resumed_crashes", -1);\n'
         '  pref("browser.sessionstore.resume_from_crash", false);\n'
         '  pref("browser.sessionstore.max_resumed_crashes", -1);\n'
+        '  pref("browser.sessionstore.interval", 60000);\n'
+        '  pref("browser.tabs.unloadOnLowMemory", true);\n'
+        '  pref("gfx.webrender.all", true);\n'
+        '  pref("network.http.speculative-parallel-limit", 0);\n'
+        '  pref("browser.cache.memory.enable", true);\n'
+        '  pref("browser.cache.disk.enable", true);\n'
         '  pref("datareporting.policy.dataSubmissionPolicyBypassNotification", true);\n'
         '  pref("datareporting.policy.firstRunURL", "");'
     )
@@ -396,18 +408,6 @@ try {
     cfg = cfg.replace(
         'Array.from(navBar.children).forEach(function(node) {\n      var id = node.id || "";',
         'Array.from(navBar.children).forEach(function(node) {\n      if (node.localName === "toolbarspring" || node.localName === "toolbartabstop") { try { node.style.setProperty("display", "none", "important"); } catch(e) {} return; }\n      var id = node.id || "";\n      if (id.indexOf("ublock") !== -1 || id.indexOf("uBlock") !== -1) { relocateUblockBtn(node); return; }',
-    )
-    cfg = cfg.replace(
-        'forceStyle(pill, "display", "-moz-box");\n      forceStyle(pill, "-moz-box-align", "center");',
-        'forceStyle(pill, "display", "-moz-box");\n      forceStyle(pill, "display", "flex");\n      forceStyle(pill, "-moz-box-align", "center");\n      forceStyle(pill, "align-items", "center");',
-    )
-    cfg = cfg.replace(
-        'forceStyle(node, "display", "-moz-box");\n        forceStyle(node, "-moz-box-align", "center");\n        forceStyle(node, "-moz-box-pack", "center");',
-        'forceStyle(node, "display", "-moz-box");\n        forceStyle(node, "display", "inline-flex");\n        forceStyle(node, "-moz-box-align", "center");\n        forceStyle(node, "align-items", "center");\n        forceStyle(node, "-moz-box-pack", "center");\n        forceStyle(node, "justify-content", "center");',
-    )
-    cfg = cfg.replace(
-        'if (pillUrlbar) {\n      pillUrlbar.setAttribute("flex", "1");\n      forceStyle(pillUrlbar, "-moz-box-flex", "1");\n    }',
-        'if (pillUrlbar) {\n      pillUrlbar.setAttribute("flex", "1");\n      forceStyle(pillUrlbar, "-moz-box-flex", "1");\n      forceStyle(pillUrlbar, "flex", "1 1 auto");\n      if (urlbarEl) { urlbarEl.setAttribute("flex", "1"); forceStyle(urlbarEl, "flex", "1 1 auto"); }\n    }',
     )
 
     # Inject Windows taskbar grouping & document title
@@ -880,6 +880,12 @@ def main():
                 "toolkit.startup.max_resumed_crashes": -1,
                 "browser.sessionstore.resume_from_crash": False,
                 "browser.sessionstore.max_resumed_crashes": -1,
+                "browser.sessionstore.interval": 60000,
+                "browser.tabs.unloadOnLowMemory": True,
+                "gfx.webrender.all": True,
+                "network.http.speculative-parallel-limit": 0,
+                "browser.cache.memory.enable": True,
+                "browser.cache.disk.enable": True,
                 "extensions.webextensions.remote": False,
                 "browser.tabs.remote.autostart": False,
                 "toolkit.legacyUserProfileCustomizations.stylesheets": True,

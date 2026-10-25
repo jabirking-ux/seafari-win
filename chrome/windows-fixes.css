@@ -201,49 +201,7 @@
     overflow: hidden !important;
 }
 
-/* 4. Modern CSS Flexbox support for Firefox 113+ / 158+ liquid glass pills */
-#nav-bar-customization-target {
-    display: flex !important;
-    align-items: center !important;
-    flex: 1 1 auto !important;
-    min-width: 0 !important;
-}
-
-#nav-bar-customization-target > toolbarspring,
-#nav-bar hbox[seafari-pill] > toolbarspring {
-    display: none !important;
-}
-
-#nav-bar hbox[seafari-pill] {
-    display: flex !important;
-    align-items: center !important;
-}
-
-#seafari-pill-urlbar {
-    flex: 1 1 auto !important;
-    min-width: 120px !important;
-}
-
-#seafari-pill-urlbar #urlbar-container {
-    flex: 1 1 auto !important;
-    width: auto !important;
-    min-width: 100px !important;
-}
-
-#seafari-pill-left,
-#seafari-pill-extensions,
-#seafari-pill-menu {
-    flex: 0 0 auto !important;
-}
-
-#nav-bar hbox[seafari-pill] toolbarbutton:not(#urlbar-zoom-button):not(.subviewbutton):not(.titlebar-button):not(.close-button),
-#nav-bar hbox[seafari-pill] toolbaritem:not(#urlbar-zoom-button):not(.subviewbutton):not(.titlebar-button):not(.close-button) {
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-}
-
-/* Support both #fxa-toolbar-button and #fxa-toolbar-menu-button */
+/* 4. Support both #fxa-toolbar-button and #fxa-toolbar-menu-button */
 #fxa-toolbar-menu-button,
 #fxa-toolbar-menu-button .toolbarbutton-icon,
 #fxa-toolbar-menu-button image {

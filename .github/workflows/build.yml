@@ -146,18 +146,18 @@ jobs:
             "${{ steps.check_updates.outputs.build_reason }}" \
             "$PREV_TAG"
 
-      - name: Mark Previous Releases as Pre-Release & NOT WORKING
+      - name: Remove Previous Bugged Releases
         if: steps.check_updates.outputs.should_build == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TARGET_TAG="v${{ steps.check_updates.outputs.release_version }}"
-          echo "Checking for previous releases to flag as [NOT WORKING] and prerelease..."
-          PREV_TAGS=$(gh release list --json tagName,isPrerelease -q '.[] | select(.isPrerelease == false) | .tagName' || true)
+          echo "Removing previous bugged releases before publishing fix $TARGET_TAG..."
+          PREV_TAGS=$(gh release list --json tagName -q '.[].tagName' || true)
           for ptag in $PREV_TAGS; do
             if [ "$ptag" != "$TARGET_TAG" ]; then
-              echo "Marking $ptag as [NOT WORKING] and prerelease..."
-              gh release edit "$ptag" --prerelease --title "Seafari for Windows $ptag [NOT WORKING]" || true
+              echo "Deleting prior bugged release and tag: $ptag"
+              gh release delete "$ptag" --yes --cleanup-tag || true
             fi
           done
 
