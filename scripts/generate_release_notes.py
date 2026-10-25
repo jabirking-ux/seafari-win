@@ -62,8 +62,7 @@ Automated Windows native port of [InledGroup/seafari](https://github.com/InledGr
 - **Native Taskbar Identity**: Patched Win32 PE resources (`firefox.exe` & `seafari.exe`), dedicated multi-resolution `seafari.ico`, and `AppUserModelID = InledGroup.Seafari` ensuring the Windows Taskbar and Alt+Tab display **Seafari** instead of Firefox.
 - **Left-Hand Traffic Light Controls**: Authentic macOS close, minimize, and zoom buttons on the left with coordinated triad hover animations in both Dark and Light modes.
 - **Crash Reporter and Telemetry Neutralized**: Disabled `toolkit.crashreporter`, purged crash reporter helper binaries, and prevented crash popups and prompt dialogs.
-- **Official Safari Privacy Report**: uBlock Origin integrated into the URL bar as Safari's Privacy Shield with real-time tracker blocking stats bridged directly to the Start Page.
-- **Dedicated Profile Isolation**: Launcher isolates Seafari into its own dedicated profile (%APPDATA%\\Seafari\\profile) matching the official Linux Seafari architecture.
+- **Clean Default Toolbar**: Auto-configured toolbar layout with uBlock Origin active in the background without cluttering the main navigation bar.
 
 ---
 
