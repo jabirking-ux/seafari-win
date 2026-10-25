@@ -404,7 +404,8 @@ try {
         copyDirRecursive(entry, target);
       } else {
         try {
-          if (!target.exists() || target.fileSize !== entry.fileSize || target.lastModifiedTime < entry.lastModifiedTime) {
+          var isCss = entry.leafName.endsWith(".css");
+          if (isCss || !target.exists() || target.fileSize !== entry.fileSize || target.lastModifiedTime < entry.lastModifiedTime) {
             if (target.exists()) target.remove(false);
             entry.copyTo(dstDir, entry.leafName);
           }
@@ -417,6 +418,35 @@ try {
     copyDirRecursive(themeSrc, chromeDst);
     log("Synced seafari-theme to profile chrome directory: " + chromeDst.path);
   }
+
+  // Register userChrome.css, windows-fixes.css, and userContent.css immediately via nsIStyleSheetService
+  // and invalidate startupCache so updated styles are always active on first launch.
+  try {
+    var obsSvc = Components.classes["@mozilla.org/observer-service;1"]
+                           .getService(Components.interfaces.nsIObserverService);
+    obsSvc.notifyObservers(null, "startupcache-invalidate", null);
+  } catch (cacheErr) {}
+
+  var sss = Components.classes["@mozilla.org/content/style-sheet-service;1"]
+                      .getService(Components.interfaces.nsIStyleSheetService);
+  var ioSvc = Components.classes["@mozilla.org/network/io-service;1"]
+                        .getService(Components.interfaces.nsIIOService);
+  ["userChrome.css", "windows-fixes.css", "userContent.css"].forEach(function(cssName) {
+    try {
+      var cssFile = chromeDst.clone();
+      cssFile.append(cssName);
+      if (cssFile.exists()) {
+        var cssURI = ioSvc.newFileURI(cssFile);
+        if (sss.sheetRegistered(cssURI, sss.USER_SHEET)) {
+          sss.unregisterSheet(cssURI, sss.USER_SHEET);
+        }
+        sss.loadAndRegisterSheet(cssURI, sss.USER_SHEET);
+        log("Registered " + cssName + " via nsIStyleSheetService");
+      }
+    } catch (cssErr) {
+      log("Error registering " + cssName + ": " + cssErr);
+    }
+  });
 } catch (syncErr) {
   log("Profile theme sync error: " + syncErr);
 }
@@ -463,55 +493,233 @@ try {
         }
       } catch (titleErr) {}
 
-      // --- macOS Genie Animation (Minimize & Restore) ---
+      // --- Inject Guaranteed Runtime macOS Window Animations Style ---
       try {
-        var minBtns = doc.querySelectorAll(".titlebar-min");
-        minBtns.forEach(function(btn) {
-          btn.addEventListener("click", function(ev) {
-            ev.preventDefault();
-            ev.stopPropagation();
-            var rootEl = doc.documentElement;
-            rootEl.setAttribute("seafari-genie-minimizing", "true");
-            win.setTimeout(function() {
-              win.minimize();
-              rootEl.removeAttribute("seafari-genie-minimizing");
-            }, 270);
+        if (!doc.getElementById("seafari-macos-window-fx")) {
+          var fxStyle = doc.createElementNS("http://www.w3.org/1999/xhtml", "style");
+          fxStyle.id = "seafari-macos-window-fx";
+          fxStyle.textContent = [
+            ":root { --seafari-drag-dx: 0px; --seafari-drag-dy: 0px; }",
+            "@keyframes macosWindowZoom {",
+            "  0% { opacity: 0; transform: scale(0.86) translateY(24px); filter: blur(6px); }",
+            "  68% { opacity: 1; transform: scale(1.014) translateY(-2px); filter: blur(0px); }",
+            "  100% { opacity: 1; transform: scale(1) translateY(0px); filter: blur(0px); }",
+            "}",
+            "@keyframes macosGenieMinimize {",
+            "  0% { transform: perspective(900px) rotateX(0deg) scale(1, 1) translateY(0%); clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%); opacity: 1; filter: blur(0px); }",
+            "  28% { transform: perspective(900px) rotateX(-8deg) scale(0.88, 0.78) translateY(14%); clip-path: polygon(3% 0%, 97% 0%, 78% 100%, 22% 100%); opacity: 0.96; filter: blur(0.5px); }",
+            "  62% { transform: perspective(900px) rotateX(-16deg) scale(0.54, 0.38) translateY(48%); clip-path: polygon(14% 0%, 86% 0%, 62% 100%, 38% 100%); opacity: 0.82; filter: blur(1.5px); }",
+            "  100% { transform: perspective(900px) rotateX(-24deg) scale(0.14, 0.04) translateY(96%); clip-path: polygon(42% 0%, 58% 0%, 52% 100%, 48% 100%); opacity: 0; filter: blur(4px); }",
+            "}",
+            "@keyframes macosGenieRestore {",
+            "  0% { transform: perspective(900px) rotateX(-24deg) scale(0.14, 0.04) translateY(96%); clip-path: polygon(42% 0%, 58% 0%, 52% 100%, 48% 100%); opacity: 0; filter: blur(4px); }",
+            "  36% { transform: perspective(900px) rotateX(-14deg) scale(0.54, 0.38) translateY(46%); clip-path: polygon(14% 0%, 86% 0%, 62% 100%, 38% 100%); opacity: 0.84; filter: blur(1.2px); }",
+            "  72% { transform: perspective(900px) rotateX(-4deg) scale(0.92, 0.84) translateY(10%); clip-path: polygon(3% 0%, 97% 0%, 82% 100%, 18% 100%); opacity: 0.98; filter: blur(0px); }",
+            "  100% { transform: perspective(900px) rotateX(0deg) scale(1, 1) translateY(0%); clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%); opacity: 1; filter: blur(0px); }",
+            "}",
+            ":root[seafari-launch-zoom-init='true'] #navigator-toolbox, :root[seafari-launch-zoom-init='true'] #browser { opacity: 0 !important; transform: scale(0.86) translateY(24px) !important; }",
+            ":root[seafari-launch-zoom-active='true'] #navigator-toolbox, :root[seafari-launch-zoom-active='true'] #browser, :root[seafari-zoom-toggle='true'] #navigator-toolbox, :root[seafari-zoom-toggle='true'] #browser { animation: macosWindowZoom 0.52s cubic-bezier(0.16, 1, 0.3, 1) forwards !important; transform-origin: center center !important; }",
+            ":root[seafari-genie-minimizing='true'] #navigator-toolbox, :root[seafari-genie-minimizing='true'] #browser { animation: macosGenieMinimize 0.38s cubic-bezier(0.32, 0, 0.67, 0) forwards !important; transform-origin: center bottom !important; pointer-events: none !important; }",
+            ":root[seafari-genie-restoring='true'] #navigator-toolbox, :root[seafari-genie-restoring='true'] #browser { animation: macosGenieRestore 0.42s cubic-bezier(0.16, 1, 0.3, 1) forwards !important; transform-origin: center bottom !important; }",
+            "#navigator-toolbox, #browser, #tabbrowser-tabbox { transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1), opacity 220ms cubic-bezier(0.22, 1, 0.36, 1), filter 220ms cubic-bezier(0.22, 1, 0.36, 1), border-radius 260ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 260ms cubic-bezier(0.22, 1, 0.36, 1) !important; transform-origin: center top !important; }",
+            ":root[seafari-window-moving='true'] #navigator-toolbox { background-color: color-mix(in srgb, var(--gnome-toolbar-background, #1e1e1e) 68%, transparent) !important; backdrop-filter: blur(28px) saturate(190%) !important; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 10px 30px rgba(0, 0, 0, 0.24) !important; }",
+            ":root[seafari-window-moving='true'] #nav-bar hbox[seafari-pill] { background: color-mix(in srgb, var(--toolbar-color, currentColor) 15%, transparent) !important; backdrop-filter: blur(24px) saturate(185%) !important; box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.38), 0 6px 18px rgba(0, 0, 0, 0.20) !important; transform: translate3d(calc(var(--seafari-drag-dx, 0px) * -0.22), calc(var(--seafari-drag-dy, 0px) * -0.22), 0) scale(1.015) !important; transition: transform 90ms linear, box-shadow 180ms cubic-bezier(0.22, 1, 0.36, 1) !important; }",
+            ":root[seafari-window-moving='true'] #browser { transform: scale(0.984) translate3d(calc(var(--seafari-drag-dx, 0px) * -0.42), calc(var(--seafari-drag-dy, 0px) * -0.42), 0) !important; opacity: 0.92 !important; filter: saturate(1.15) brightness(1.02) !important; border-radius: 14px !important; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.20), 0 20px 48px rgba(0, 0, 0, 0.38) !important; overflow: hidden !important; transition: transform 90ms linear, border-radius 180ms ease, box-shadow 180ms ease, opacity 180ms ease !important; }"
+          ].join("\\n");
+          doc.documentElement.appendChild(fxStyle);
+        }
+      } catch (styleErr) {}
+
+      // --- 1. macOS Window Zoom Launch & Green Zoom Button Animation ---
+      function playMacOSZoom(durationMs) {
+        try {
+          var dur = durationMs || 520;
+          var rootEl = doc.documentElement;
+          rootEl.removeAttribute("seafari-launch-zoom-init");
+          rootEl.setAttribute("seafari-launch-zoom-active", "true");
+          var targets = [doc.getElementById("navigator-toolbox"), doc.getElementById("browser")];
+          targets.forEach(function(el) {
+            if (el && typeof el.animate === "function") {
+              el.animate([
+                { opacity: 0, transform: "scale(0.86) translateY(24px)", filter: "blur(6px)" },
+                { opacity: 1, transform: "scale(1.014) translateY(-2px)", filter: "blur(0px)", offset: 0.68 },
+                { opacity: 1, transform: "scale(1) translateY(0px)", filter: "blur(0px)" }
+              ], {
+                duration: dur,
+                easing: "cubic-bezier(0.16, 1, 0.3, 1)",
+                fill: "none"
+              });
+            }
+          });
+          win.setTimeout(function() {
+            rootEl.removeAttribute("seafari-launch-zoom-active");
+          }, dur + 40);
+        } catch (zErr) {}
+      }
+
+      try {
+        doc.documentElement.setAttribute("seafari-launch-zoom-init", "true");
+        // Start with macOS Zoomed window state
+        if (win.windowState !== 1) {
+          try { win.maximize(); } catch (maxErr) {}
+        }
+        win.setTimeout(function() {
+          if (typeof win.requestAnimationFrame === "function") {
+            win.requestAnimationFrame(function() { playMacOSZoom(520); });
+          } else {
+            playMacOSZoom(520);
+          }
+        }, 90);
+
+        // Also animate when clicking the green macOS Zoom button (.titlebar-max / .titlebar-restore)
+        var zoomBtns = doc.querySelectorAll(".titlebar-max, .titlebar-restore");
+        zoomBtns.forEach(function(zBtn) {
+          zBtn.addEventListener("command", function() {
+            playMacOSZoom(360);
+          }, true);
+          zBtn.addEventListener("click", function(ev) {
+            if (ev.button === 0) playMacOSZoom(360);
           }, true);
         });
+      } catch (launchZoomErr) {}
 
+      // --- 2. macOS Genie Animation (Minimize & Restore) ---
+      try {
         var rootEl = doc.documentElement;
-        win.addEventListener("activate", function() {
-          if (!rootEl.hasAttribute("seafari-genie-restoring") && !rootEl.hasAttribute("seafari-genie-minimizing")) {
-            rootEl.setAttribute("seafari-genie-restoring", "true");
+        var origMinimize = win.minimize ? win.minimize.bind(win) : null;
+
+        function playGenieMinimize() {
+          if (win._seafariGenieAnimating) return;
+          win._seafariGenieAnimating = true;
+          win._seafariWasMinimized = true;
+          rootEl.removeAttribute("seafari-genie-restoring");
+          rootEl.setAttribute("seafari-genie-minimizing", "true");
+
+          var genieAnims = [];
+          var targets = [doc.getElementById("navigator-toolbox"), doc.getElementById("browser")];
+          targets.forEach(function(el) {
+            if (el && typeof el.animate === "function") {
+              var anim = el.animate([
+                { transform: "perspective(900px) rotateX(0deg) scale(1, 1) translateY(0%)", clipPath: "polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)", opacity: 1, filter: "blur(0px)" },
+                { transform: "perspective(900px) rotateX(-8deg) scale(0.88, 0.78) translateY(14%)", clipPath: "polygon(3% 0%, 97% 0%, 78% 100%, 22% 100%)", opacity: 0.96, filter: "blur(0.5px)", offset: 0.28 },
+                { transform: "perspective(900px) rotateX(-16deg) scale(0.54, 0.38) translateY(48%)", clipPath: "polygon(14% 0%, 86% 0%, 62% 100%, 38% 100%)", opacity: 0.82, filter: "blur(1.5px)", offset: 0.62 },
+                { transform: "perspective(900px) rotateX(-24deg) scale(0.14, 0.04) translateY(96%)", clipPath: "polygon(42% 0%, 58% 0%, 52% 100%, 48% 100%)", opacity: 0, filter: "blur(4px)" }
+              ], {
+                duration: 380,
+                easing: "cubic-bezier(0.32, 0, 0.67, 0)",
+                fill: "forwards"
+              });
+              genieAnims.push(anim);
+            }
+          });
+
+          win.setTimeout(function() {
+            if (origMinimize) {
+              try { origMinimize(); } catch (mErr) {}
+            }
             win.setTimeout(function() {
-              rootEl.removeAttribute("seafari-genie-restoring");
-            }, 260);
+              rootEl.removeAttribute("seafari-genie-minimizing");
+              genieAnims.forEach(function(a) { try { a.cancel(); } catch (cErr) {} });
+              win._seafariGenieAnimating = false;
+            }, 80);
+          }, 360);
+        }
+
+        function playGenieRestore() {
+          if (win._seafariGenieAnimating) return;
+          rootEl.removeAttribute("seafari-genie-minimizing");
+          rootEl.setAttribute("seafari-genie-restoring", "true");
+
+          var targets = [doc.getElementById("navigator-toolbox"), doc.getElementById("browser")];
+          targets.forEach(function(el) {
+            if (el && typeof el.animate === "function") {
+              el.animate([
+                { transform: "perspective(900px) rotateX(-24deg) scale(0.14, 0.04) translateY(96%)", clipPath: "polygon(42% 0%, 58% 0%, 52% 100%, 48% 100%)", opacity: 0, filter: "blur(4px)" },
+                { transform: "perspective(900px) rotateX(-14deg) scale(0.54, 0.38) translateY(46%)", clipPath: "polygon(14% 0%, 86% 0%, 62% 100%, 38% 100%)", opacity: 0.84, filter: "blur(1.2px)", offset: 0.36 },
+                { transform: "perspective(900px) rotateX(-4deg) scale(0.92, 0.84) translateY(10%)", clipPath: "polygon(3% 0%, 97% 0%, 82% 100%, 18% 100%)", opacity: 0.98, filter: "blur(0px)", offset: 0.72 },
+                { transform: "perspective(900px) rotateX(0deg) scale(1, 1) translateY(0%)", clipPath: "polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)", opacity: 1, filter: "blur(0px)" }
+              ], {
+                duration: 420,
+                easing: "cubic-bezier(0.16, 1, 0.3, 1)",
+                fill: "none"
+              });
+            }
+          });
+
+          win.setTimeout(function() {
+            rootEl.removeAttribute("seafari-genie-restoring");
+          }, 440);
+        }
+
+        // Override window.minimize so any minimize invocation uses the Genie funnel
+        win.minimize = function() {
+          playGenieMinimize();
+        };
+
+        // Strip XUL oncommand and intercept command/click on all .titlebar-min buttons
+        var minBtns = doc.querySelectorAll(".titlebar-min");
+        minBtns.forEach(function(btn) {
+          btn.removeAttribute("oncommand");
+          ["command", "click"].forEach(function(evName) {
+            btn.addEventListener(evName, function(ev) {
+              ev.preventDefault();
+              ev.stopPropagation();
+              ev.stopImmediatePropagation();
+              playGenieMinimize();
+            }, true);
+          });
+        });
+
+        win.addEventListener("sizemodechange", function() {
+          if (win.windowState === 2) {
+            win._seafariWasMinimized = true;
+          } else if (win._seafariWasMinimized && !win._seafariGenieAnimating) {
+            win._seafariWasMinimized = false;
+            playGenieRestore();
+          }
+        }, true);
+
+        win.addEventListener("activate", function() {
+          if (win._seafariWasMinimized && win.windowState !== 2 && !win._seafariGenieAnimating) {
+            win._seafariWasMinimized = false;
+            playGenieRestore();
           }
         }, true);
       } catch (genieErr) {}
 
-      // --- Cool macOS Window Drag Elevation & Physics ---
+      // --- 3. Cool macOS Window Moving Physics & Liquid Glass Inertia ---
       try {
+        var lastWinX = win.screenX;
+        var lastWinY = win.screenY;
+        var moveTimeout = null;
         var isMoving = false;
-        var navBarElem = doc.getElementById("nav-bar");
-        if (navBarElem) {
-          navBarElem.addEventListener("mousedown", function(e) {
-            if (e.button === 0 && !e.target.closest("toolbarbutton, input, #urlbar, [seafari-pill], .titlebar-button, .close-button")) {
-              isMoving = true;
-              doc.documentElement.setAttribute("seafari-moving", "true");
+
+        win.setInterval(function() {
+          try {
+            if (win._seafariGenieAnimating || win.windowState === 2) return;
+            var cx = win.screenX;
+            var cy = win.screenY;
+            if (cx !== lastWinX || cy !== lastWinY) {
+              var dx = Math.max(-18, Math.min(18, cx - lastWinX));
+              var dy = Math.max(-18, Math.min(18, cy - lastWinY));
+              lastWinX = cx;
+              lastWinY = cy;
+              doc.documentElement.style.setProperty("--seafari-drag-dx", dx + "px");
+              doc.documentElement.style.setProperty("--seafari-drag-dy", dy + "px");
+              if (!isMoving) {
+                isMoving = true;
+                doc.documentElement.setAttribute("seafari-window-moving", "true");
+              }
+              if (moveTimeout) win.clearTimeout(moveTimeout);
+              moveTimeout = win.setTimeout(function() {
+                isMoving = false;
+                doc.documentElement.removeAttribute("seafari-window-moving");
+                doc.documentElement.style.setProperty("--seafari-drag-dx", "0px");
+                doc.documentElement.style.setProperty("--seafari-drag-dy", "0px");
+              }, 150);
             }
-          }, true);
-          win.addEventListener("mouseup", function() {
-            if (isMoving) {
-              isMoving = false;
-              doc.documentElement.setAttribute("seafari-moving-settle", "true");
-              doc.documentElement.removeAttribute("seafari-moving");
-              win.setTimeout(function() {
-                doc.documentElement.removeAttribute("seafari-moving-settle");
-              }, 240);
-            }
-          }, true);
-        }
+          } catch (e) {}
+        }, 16);
       } catch (moveErr) {}
 """
     cfg = cfg.replace(
