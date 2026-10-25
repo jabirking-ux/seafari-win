@@ -303,6 +303,65 @@ try {
   );
   SetCurrentProcessExplicitAppUserModelIDFn("InledGroup.Seafari");
   log("Explicit AppUserModelID set to InledGroup.Seafari");
+
+  // Synchronous WH_CBT window hook: intercept MozillaWindowClass before it is shown or painted
+  try {
+    var u32Early = ctypes.open("user32.dll");
+    var k32Early = ctypes.open("kernel32.dll");
+    var HookProcType = ctypes.FunctionType(ctypes.stdcall_abi, ctypes.long, [ctypes.int, ctypes.uintptr_t, ctypes.uintptr_t]);
+    var SetWindowsHookExWFnEarly = u32Early.declare("SetWindowsHookExW", ctypes.winapi_abi, ctypes.voidptr_t, ctypes.int, HookProcType.ptr, ctypes.voidptr_t, ctypes.uint32_t);
+    var CallNextHookExFnEarly = u32Early.declare("CallNextHookEx", ctypes.winapi_abi, ctypes.long, ctypes.voidptr_t, ctypes.int, ctypes.uintptr_t, ctypes.uintptr_t);
+    var UnhookWindowsHookExFnEarly = u32Early.declare("UnhookWindowsHookEx", ctypes.winapi_abi, ctypes.int, ctypes.voidptr_t);
+    var GetCurrentThreadIdFnEarly = k32Early.declare("GetCurrentThreadId", ctypes.winapi_abi, ctypes.uint32_t);
+    var GetClassNameWFnEarly = u32Early.declare("GetClassNameW", ctypes.winapi_abi, ctypes.int, ctypes.voidptr_t, ctypes.jschar.ptr, ctypes.int);
+    var GetWindowLongWFnEarly = u32Early.declare("GetWindowLongW", ctypes.winapi_abi, ctypes.long, ctypes.voidptr_t, ctypes.int);
+    var SetWindowLongWFnEarly = u32Early.declare("SetWindowLongW", ctypes.winapi_abi, ctypes.long, ctypes.voidptr_t, ctypes.int, ctypes.long);
+    var SetLayeredWindowAttributesFnEarly = u32Early.declare("SetLayeredWindowAttributes", ctypes.winapi_abi, ctypes.int, ctypes.voidptr_t, ctypes.uint32_t, ctypes.uint8_t, ctypes.uint32_t);
+
+    var WH_CBT_EARLY = 5;
+    var HCBT_CREATEWND_EARLY = 3;
+    var GWL_EXSTYLE_EARLY = -20;
+    var WS_EX_LAYERED_EARLY = 0x00080000;
+    var LWA_ALPHA_EARLY = 0x02;
+
+    var hHookCBT = null;
+    var cbtCallback = HookProcType.ptr(function(nCode, wParam, lParam) {
+      try {
+        if (nCode === HCBT_CREATEWND_EARLY) {
+          var hwnd = ctypes.voidptr_t(ctypes.UInt64(wParam));
+          var buf = new (ctypes.ArrayType(ctypes.jschar, 256))();
+          GetClassNameWFnEarly(hwnd, buf, 256);
+          var clsName = buf.readString();
+          if (clsName === "MozillaWindowClass") {
+            var ex = GetWindowLongWFnEarly(hwnd, GWL_EXSTYLE_EARLY);
+            if ((ex & WS_EX_LAYERED_EARLY) === 0) {
+              SetWindowLongWFnEarly(hwnd, GWL_EXSTYLE_EARLY, ex | WS_EX_LAYERED_EARLY);
+            }
+            SetLayeredWindowAttributesFnEarly(hwnd, 0, 0, LWA_ALPHA_EARLY);
+            log("CBT Hook: Intercepted " + clsName + " at creation! HWND: " + wParam + " set to WS_EX_LAYERED alpha=0");
+          }
+        }
+      } catch(err) {
+        log("CBT callback err: " + err);
+      }
+      return CallNextHookExFnEarly(hHookCBT, nCode, wParam, lParam);
+    });
+
+    var curThreadId = GetCurrentThreadIdFnEarly();
+    hHookCBT = SetWindowsHookExWFnEarly(WH_CBT_EARLY, cbtCallback, null, curThreadId);
+    globalThis._seafariUnhookCBT = function() {
+      if (hHookCBT && !hHookCBT.isNull()) {
+        try {
+          UnhookWindowsHookExFnEarly(hHookCBT);
+          hHookCBT = null;
+          log("CBT hook successfully unhooked after startup");
+        } catch(e) {}
+      }
+    };
+    log("Installed synchronous WH_CBT hook on thread " + curThreadId);
+  } catch (hookErr) {
+    log("WH_CBT hook setup failed: " + hookErr);
+  }
 } catch (aumidErr) {
   log("AppUserModelID init error: " + aumidErr);
 }
@@ -534,8 +593,15 @@ try {
           }, 50);
 
           win.setTimeout(function() {
+            if (globalThis._seafariUnhookCBT) {
+              try { globalThis._seafariUnhookCBT(); } catch(e) {}
+            }
             win.clearInterval(prelaunchRetryTimer);
             doc.documentElement.removeAttribute("seafari-prelaunch");
+            try {
+              doc.documentElement.style.removeProperty("opacity");
+              doc.documentElement.style.removeProperty("visibility");
+            } catch (e) {}
             var curA = 0;
             var fadeTimer = win.setInterval(function() {
               curA += 32;
@@ -674,6 +740,20 @@ def patch_omni_tree(temp_dir, repo_root, is_browser_omni=False):
         if os.path.exists(firefox_prefs_js):
             with open(firefox_prefs_js, "a", encoding="utf-8") as f:
                 f.write("\n" + ONBOARDING_BYPASS_PREFS_JS)
+
+        # Patch browser.xhtml so the window starts with 0 opacity from the very first parsed byte
+        browser_xhtml = os.path.join(temp_dir, "chrome", "browser", "content", "browser", "browser.xhtml")
+        if os.path.exists(browser_xhtml):
+            with open(browser_xhtml, "r", encoding="utf-8") as f:
+                bx = f.read()
+            if 'seafari-prelaunch="true"' not in bx:
+                bx = bx.replace(
+                    '<html id="main-window"',
+                    '<html id="main-window" seafari-prelaunch="true" style="opacity: 0 !important; visibility: hidden !important;"',
+                    1,
+                )
+                with open(browser_xhtml, "w", encoding="utf-8") as f:
+                    f.write(bx)
     else:
         copy_tree_overlay(os.path.join(repo_root, "chrome", "gre"), temp_dir)
 
