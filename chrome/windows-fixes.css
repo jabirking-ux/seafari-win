@@ -216,4 +216,110 @@
     visibility: collapse !important;
 }
 
+/* 6. macOS Window Zoom Entrance Animation */
+@keyframes macosWindowZoom {
+    0% {
+        opacity: 0.15;
+        transform: scale(0.92);
+    }
+    65% {
+        opacity: 1;
+        transform: scale(1.006);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+:root:not([sizemode="maximized"]):not([inFullscreen]) #navigator-toolbox,
+:root:not([sizemode="maximized"]):not([inFullscreen]) #browser {
+    animation: macosWindowZoom 0.35s cubic-bezier(0.16, 1, 0.3, 1) ease-out !important;
+    transform-origin: center center !important;
+}
+
+/* 7. macOS Genie Effect (Minimize & Restore) */
+@keyframes macosGenieMinimize {
+    0% {
+        transform: scale(1, 1) translateY(0);
+        clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%);
+        opacity: 1;
+    }
+    30% {
+        transform: scale(0.86, 0.74) translateY(16%);
+        clip-path: polygon(5% 0%, 95% 0%, 80% 100%, 20% 100%);
+        opacity: 0.95;
+    }
+    65% {
+        transform: scale(0.50, 0.34) translateY(52%);
+        clip-path: polygon(16% 0%, 84% 0%, 64% 100%, 36% 100%);
+        opacity: 0.78;
+    }
+    100% {
+        transform: scale(0.12, 0.04) translateY(96%);
+        clip-path: polygon(42% 0%, 58% 0%, 53% 100%, 47% 100%);
+        opacity: 0;
+    }
+}
+
+@keyframes macosGenieRestore {
+    0% {
+        transform: scale(0.12, 0.04) translateY(96%);
+        clip-path: polygon(42% 0%, 58% 0%, 53% 100%, 47% 100%);
+        opacity: 0;
+    }
+    35% {
+        transform: scale(0.50, 0.34) translateY(52%);
+        clip-path: polygon(16% 0%, 84% 0%, 64% 100%, 36% 100%);
+        opacity: 0.78;
+    }
+    70% {
+        transform: scale(0.86, 0.74) translateY(16%);
+        clip-path: polygon(5% 0%, 95% 0%, 80% 100%, 20% 100%);
+        opacity: 0.95;
+    }
+    100% {
+        transform: scale(1, 1) translateY(0);
+        clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%);
+        opacity: 1;
+    }
+}
+
+:root[seafari-genie-minimizing="true"] #navigator-toolbox,
+:root[seafari-genie-minimizing="true"] #browser {
+    animation: macosGenieMinimize 0.28s cubic-bezier(0.25, 0.8, 0.25, 1) forwards !important;
+    transform-origin: center bottom !important;
+    pointer-events: none !important;
+}
+
+:root[seafari-genie-restoring="true"] #navigator-toolbox,
+:root[seafari-genie-restoring="true"] #browser {
+    animation: macosGenieRestore 0.26s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+    transform-origin: center bottom !important;
+}
+
+/* 8. Cool macOS Window Moving Physics & Floating Elevation */
+#nav-bar,
+#titlebar,
+#toolbar-menubar {
+    -moz-window-dragging: drag !important;
+}
+
+:root[sizemode="normal"] {
+    transition: box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1), transform 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+:root[sizemode="normal"][seafari-moving="true"] {
+    box-shadow: 0 32px 80px rgba(0, 0, 0, 0.46), 0 14px 28px rgba(0, 0, 0, 0.24) !important;
+    transform: scale(1.002) !important;
+    transition: box-shadow 0.12s cubic-bezier(0.16, 1, 0.3, 1), transform 0.12s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+:root[sizemode="normal"][seafari-moving-settle="true"] {
+    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.25), 0 5px 12px rgba(0, 0, 0, 0.14) !important;
+    transform: scale(1) !important;
+    transition: box-shadow 0.24s cubic-bezier(0.16, 1, 0.3, 1), transform 0.24s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+
 

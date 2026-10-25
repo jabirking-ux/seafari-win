@@ -462,6 +462,57 @@ try {
           doc.title = doc.title.replace(/Mozilla Firefox/g, "Seafari").replace(/Firefox/g, "Seafari");
         }
       } catch (titleErr) {}
+
+      // --- macOS Genie Animation (Minimize & Restore) ---
+      try {
+        var minBtns = doc.querySelectorAll(".titlebar-min");
+        minBtns.forEach(function(btn) {
+          btn.addEventListener("click", function(ev) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            var rootEl = doc.documentElement;
+            rootEl.setAttribute("seafari-genie-minimizing", "true");
+            win.setTimeout(function() {
+              win.minimize();
+              rootEl.removeAttribute("seafari-genie-minimizing");
+            }, 270);
+          }, true);
+        });
+
+        var rootEl = doc.documentElement;
+        win.addEventListener("activate", function() {
+          if (!rootEl.hasAttribute("seafari-genie-restoring") && !rootEl.hasAttribute("seafari-genie-minimizing")) {
+            rootEl.setAttribute("seafari-genie-restoring", "true");
+            win.setTimeout(function() {
+              rootEl.removeAttribute("seafari-genie-restoring");
+            }, 260);
+          }
+        }, true);
+      } catch (genieErr) {}
+
+      // --- Cool macOS Window Drag Elevation & Physics ---
+      try {
+        var isMoving = false;
+        var navBarElem = doc.getElementById("nav-bar");
+        if (navBarElem) {
+          navBarElem.addEventListener("mousedown", function(e) {
+            if (e.button === 0 && !e.target.closest("toolbarbutton, input, #urlbar, [seafari-pill], .titlebar-button, .close-button")) {
+              isMoving = true;
+              doc.documentElement.setAttribute("seafari-moving", "true");
+            }
+          }, true);
+          win.addEventListener("mouseup", function() {
+            if (isMoving) {
+              isMoving = false;
+              doc.documentElement.setAttribute("seafari-moving-settle", "true");
+              doc.documentElement.removeAttribute("seafari-moving");
+              win.setTimeout(function() {
+                doc.documentElement.removeAttribute("seafari-moving-settle");
+              }, 240);
+            }
+          }, true);
+        }
+      } catch (moveErr) {}
 """
     cfg = cfg.replace(
         'if (urlbar) {\n        urlbar.addEventListener("focusin", function() { setHidden(false); updateToolbarLuminance(); });',
