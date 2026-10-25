@@ -2,12 +2,17 @@
 set -euo pipefail
 
 FF_VERSION=""
+RELEASE_VERSION=""
 SKIP_INSTALLER="false"
 
 while [[ "$#" -gt 0 ]]; do
     case "$1" in
-        --firefox-version|--version)
+        --firefox-version)
             FF_VERSION="$2"
+            shift
+            ;;
+        --release-version|--version)
+            RELEASE_VERSION="$2"
             shift
             ;;
         --skip-installer)
@@ -24,6 +29,14 @@ done
 if [ -z "$FF_VERSION" ]; then
     echo "[*] Detecting latest Firefox win64 version from Mozilla API..."
     FF_VERSION=$(curl -fsSL "https://product-details.mozilla.org/1.0/firefox_versions.json" | python3 -c "import sys, json; print(json.load(sys.stdin)['LATEST_FIREFOX_VERSION'])")
+fi
+
+if [ -z "$RELEASE_VERSION" ]; then
+    if [ -f "version.txt" ]; then
+        RELEASE_VERSION=$(tr -d '[:space:]' < version.txt)
+    else
+        RELEASE_VERSION="$FF_VERSION"
+    fi
 fi
 
 echo "========================================================"
@@ -77,7 +90,7 @@ python3 "$ROOT_DIR/scripts/patch_windows_firefox.py" \
     --ublock-xpi "$UBLOCK_XPI" \
     --atbc-xpi "$ATBC_XPI"
 
-PORTABLE_ZIP="$ROOT_DIR/Seafari-Windows-${FF_VERSION}.zip"
+PORTABLE_ZIP="$ROOT_DIR/Seafari-Windows-${RELEASE_VERSION}.zip"
 rm -f "$PORTABLE_ZIP"
 echo "[*] Creating Portable ZIP archive: $PORTABLE_ZIP ..."
 (
@@ -87,11 +100,11 @@ echo "[*] Creating Portable ZIP archive: $PORTABLE_ZIP ..."
 echo "[+] Created $PORTABLE_ZIP"
 
 if [ "$SKIP_INSTALLER" != "true" ] && command -v makensis >/dev/null 2>&1; then
-    INSTALLER_EXE="$ROOT_DIR/Seafari-Setup-${FF_VERSION}.exe"
+    INSTALLER_EXE="$ROOT_DIR/Seafari-Setup-${RELEASE_VERSION}.exe"
     rm -f "$INSTALLER_EXE"
     echo "[*] Building Windows NSIS Installer: $INSTALLER_EXE ..."
     makensis \
-        -DVERSION="$FF_VERSION" \
+        -DVERSION="$RELEASE_VERSION" \
         -DSOURCE_DIR="$WORKSPACE/Seafari" \
         -DOUT_FILE="$INSTALLER_EXE" \
         "$ROOT_DIR/installer/seafari.nsi"
@@ -101,5 +114,5 @@ else
 fi
 
 echo "========================================================"
-echo " Seafari Windows build complete for v${FF_VERSION}!"
+echo " Seafari Windows build complete for v${RELEASE_VERSION} (base Firefox ${FF_VERSION})!"
 echo "========================================================"

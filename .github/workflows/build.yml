@@ -77,8 +77,18 @@ jobs:
             BUILD_REASON="Upstream Seafari updated (${LAST_UPSTREAM_SHA:0:7} -> ${UPSTREAM_SHA:0:7})"
           fi
 
+          RELEASE_VERSION="$FF_VERSION"
+          if [ -f "version.txt" ]; then
+            FILE_VER=$(tr -d '[:space:]' < version.txt)
+            if [ -n "$FILE_VER" ]; then
+              RELEASE_VERSION="$FILE_VER"
+            fi
+          fi
+          echo "Seafari release version: $RELEASE_VERSION"
+
           echo "should_build=$SHOULD_BUILD" >> "$GITHUB_OUTPUT"
           echo "ff_version=$FF_VERSION" >> "$GITHUB_OUTPUT"
+          echo "release_version=$RELEASE_VERSION" >> "$GITHUB_OUTPUT"
           echo "upstream_sha=$UPSTREAM_SHA" >> "$GITHUB_OUTPUT"
           echo "build_reason=$BUILD_REASON" >> "$GITHUB_OUTPUT"
 
@@ -103,7 +113,9 @@ jobs:
         if: steps.check_updates.outputs.should_build == 'true'
         run: |
           chmod +x build_seafari_win.sh
-          ./build_seafari_win.sh --firefox-version "${{ steps.check_updates.outputs.ff_version }}"
+          ./build_seafari_win.sh \
+            --firefox-version "${{ steps.check_updates.outputs.ff_version }}" \
+            --release-version "${{ steps.check_updates.outputs.release_version }}"
 
       - name: Update version tracking files and commit to repository
         if: steps.check_updates.outputs.should_build == 'true'
@@ -114,7 +126,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git add last_version.txt last_upstream_commit.txt chrome/ MacTahoe/ tab-overview/ userChrome.css userContent.css customChrome.css newtab.html seafari.png seafari.ico build_seafari_linux.sh || true
+          git add last_version.txt last_upstream_commit.txt version.txt chrome/ MacTahoe/ tab-overview/ userChrome.css userContent.css customChrome.css newtab.html seafari.png seafari.ico build_seafari_linux.sh || true
           if ! git diff --cached --quiet; then
             git commit -m "chore: update to Firefox ${{ steps.check_updates.outputs.ff_version }} (upstream ${{ steps.check_updates.outputs.upstream_sha }})"
             git push origin HEAD
@@ -128,21 +140,37 @@ jobs:
           PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
           echo "Previous release tag: ${PREV_TAG:-<none>}"
           python3 scripts/generate_release_notes.py \
+            "${{ steps.check_updates.outputs.release_version }}" \
             "${{ steps.check_updates.outputs.ff_version }}" \
             "${{ steps.check_updates.outputs.upstream_sha }}" \
             "${{ steps.check_updates.outputs.build_reason }}" \
             "$PREV_TAG"
 
+      - name: Mark Previous Releases as Pre-Release & NOT WORKING
+        if: steps.check_updates.outputs.should_build == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TARGET_TAG="v${{ steps.check_updates.outputs.release_version }}"
+          echo "Checking for previous releases to flag as [NOT WORKING] and prerelease..."
+          PREV_TAGS=$(gh release list --json tagName,isPrerelease -q '.[] | select(.isPrerelease == false) | .tagName' || true)
+          for ptag in $PREV_TAGS; do
+            if [ "$ptag" != "$TARGET_TAG" ]; then
+              echo "Marking $ptag as [NOT WORKING] and prerelease..."
+              gh release edit "$ptag" --prerelease --title "Seafari for Windows $ptag [NOT WORKING]" || true
+            fi
+          done
+
       - name: Publish GitHub Release
         if: steps.check_updates.outputs.should_build == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.check_updates.outputs.ff_version }}
-          name: Seafari for Windows v${{ steps.check_updates.outputs.ff_version }}
+          tag_name: v${{ steps.check_updates.outputs.release_version }}
+          name: Seafari for Windows v${{ steps.check_updates.outputs.release_version }}
           body_path: RELEASE_CHANGELOG.md
           files: |
-            Seafari-Windows-${{ steps.check_updates.outputs.ff_version }}.zip
-            Seafari-Setup-${{ steps.check_updates.outputs.ff_version }}.exe
+            Seafari-Windows-${{ steps.check_updates.outputs.release_version }}.zip
+            Seafari-Setup-${{ steps.check_updates.outputs.release_version }}.exe
           draft: false
           prerelease: false
           make_latest: true
