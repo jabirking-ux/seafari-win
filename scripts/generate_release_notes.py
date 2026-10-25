@@ -57,7 +57,8 @@ Automated Windows native port of [InledGroup/seafari](https://github.com/InledGr
 
 ### What is Included and Key Updates
 - **Authentic Upstream Parity & Liquid Glass**: 1:1 synchronization with official upstream [InledGroup/seafari](https://github.com/InledGroup/seafari) macOS Safari UI theme, Start Page, Favorites, Privacy Report, Reading List, and liquid glass navigation pills.
-- **Resource Optimization & Performance**: Enabled WebRender Direct3D hardware acceleration, speculative connection reduction, tab unloader on low memory, and optimized sessionstore disk write frequency to drastically reduce CPU, RAM, and disk utilization while remaining completely identical to upstream.
+- **Ultra-Fast Web Page Loading & HTTP/3**: Enabled HTTP/3 QUIC protocol, 2048 SSL/TLS token session caching, unthrottled request pacing, 100ms progressive DOM reflow intervals, and 64KB image chunk decoding for rapid page rendering.
+- **Advanced Resource & Memory Optimization**: Hardened RAM efficiency via 15-entry session history caps, 3-page BFcache viewer limits, 512MB memory cache capacity, low-memory automatic tab unloading, GPU shader pre-caching, and background media autoplay blocking.
 - **Zero-Flash Startup Hold**: Dedicated native Win32 launcher (`seafari.exe`) holds launch for exactly 1.5 seconds prior to launching the browser, ensuring zero window flicker or split-second display before smoothly revealing.
 - **Native Taskbar Identity**: Patched Win32 PE resources (`firefox.exe` & `seafari.exe`), dedicated multi-resolution `seafari.ico`, and `AppUserModelID = InledGroup.Seafari` ensuring the Windows Taskbar and Alt+Tab display **Seafari** instead of Firefox.
 - **Left-Hand Traffic Light Controls**: Authentic macOS close, minimize, and zoom buttons on the left with coordinated triad hover animations in both Dark and Light modes.

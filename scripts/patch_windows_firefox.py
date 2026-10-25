@@ -195,9 +195,26 @@ pref("browser.sessionstore.max_resumed_crashes", -1);
 pref("browser.sessionstore.interval", 60000);
 pref("browser.tabs.unloadOnLowMemory", true);
 pref("gfx.webrender.all", true);
+pref("gfx.webrender.pre-cache-shaders", true);
+pref("gfx.canvas.accelerated", true);
+pref("layers.gpu-process.enabled", true);
+pref("network.http.http3.enable", true);
+pref("network.ssl_tokens_cache_capacity", 2048);
+pref("network.http.max-connections", 900);
+pref("network.http.max-persistent-connections-per-server", 8);
+pref("network.http.pacing.requests.enabled", false);
 pref("network.http.speculative-parallel-limit", 0);
+pref("content.notify.interval", 100000);
+pref("content.notify.ontimer", true);
+pref("image.mem.decode_bytes_at_a_time", 65536);
+pref("browser.sessionhistory.max_entries", 15);
+pref("browser.sessionhistory.max_total_viewers", 3);
 pref("browser.cache.memory.enable", true);
+pref("browser.cache.memory.capacity", 524288);
 pref("browser.cache.disk.enable", true);
+pref("media.autoplay.default", 5);
+pref("media.memory_cache_max_size", 65536);
+pref("javascript.options.mem.gc_incremental_slice_ms", 10);
 pref("datareporting.policy.dataSubmissionPolicyBypassNotification", true);
 pref("datareporting.policy.firstRunURL", "");
 pref("browser.messaging-system.whatsNewPanel.enabled", false);
@@ -290,9 +307,26 @@ def extract_seafari_cfg_from_linux_script(linux_script_path):
         '  pref("browser.sessionstore.interval", 60000);\n'
         '  pref("browser.tabs.unloadOnLowMemory", true);\n'
         '  pref("gfx.webrender.all", true);\n'
+        '  pref("gfx.webrender.pre-cache-shaders", true);\n'
+        '  pref("gfx.canvas.accelerated", true);\n'
+        '  pref("layers.gpu-process.enabled", true);\n'
+        '  pref("network.http.http3.enable", true);\n'
+        '  pref("network.ssl_tokens_cache_capacity", 2048);\n'
+        '  pref("network.http.max-connections", 900);\n'
+        '  pref("network.http.max-persistent-connections-per-server", 8);\n'
+        '  pref("network.http.pacing.requests.enabled", false);\n'
         '  pref("network.http.speculative-parallel-limit", 0);\n'
+        '  pref("content.notify.interval", 100000);\n'
+        '  pref("content.notify.ontimer", true);\n'
+        '  pref("image.mem.decode_bytes_at_a_time", 65536);\n'
+        '  pref("browser.sessionhistory.max_entries", 15);\n'
+        '  pref("browser.sessionhistory.max_total_viewers", 3);\n'
         '  pref("browser.cache.memory.enable", true);\n'
+        '  pref("browser.cache.memory.capacity", 524288);\n'
         '  pref("browser.cache.disk.enable", true);\n'
+        '  pref("media.autoplay.default", 5);\n'
+        '  pref("media.memory_cache_max_size", 65536);\n'
+        '  pref("javascript.options.mem.gc_incremental_slice_ms", 10);\n'
         '  pref("datareporting.policy.dataSubmissionPolicyBypassNotification", true);\n'
         '  pref("datareporting.policy.firstRunURL", "");'
     )
@@ -883,9 +917,26 @@ def main():
                 "browser.sessionstore.interval": 60000,
                 "browser.tabs.unloadOnLowMemory": True,
                 "gfx.webrender.all": True,
+                "gfx.webrender.pre-cache-shaders": True,
+                "gfx.canvas.accelerated": True,
+                "layers.gpu-process.enabled": True,
+                "network.http.http3.enable": True,
+                "network.ssl_tokens_cache_capacity": 2048,
+                "network.http.max-connections": 900,
+                "network.http.max-persistent-connections-per-server": 8,
+                "network.http.pacing.requests.enabled": False,
                 "network.http.speculative-parallel-limit": 0,
+                "content.notify.interval": 100000,
+                "content.notify.ontimer": True,
+                "image.mem.decode_bytes_at_a_time": 65536,
+                "browser.sessionhistory.max_entries": 15,
+                "browser.sessionhistory.max_total_viewers": 3,
                 "browser.cache.memory.enable": True,
+                "browser.cache.memory.capacity": 524288,
                 "browser.cache.disk.enable": True,
+                "media.autoplay.default": 5,
+                "media.memory_cache_max_size": 65536,
+                "javascript.options.mem.gc_incremental_slice_ms": 10,
                 "extensions.webextensions.remote": False,
                 "browser.tabs.remote.autostart": False,
                 "toolkit.legacyUserProfileCustomizations.stylesheets": True,
