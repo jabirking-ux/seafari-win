@@ -371,6 +371,31 @@ try {
     copyDirRecursive(themeSrc, chromeDst);
     log("Synced seafari-theme to profile chrome directory: " + chromeDst.path);
   }
+
+  // Ensure default user.js in profile so legacy stylesheet customization is active
+  try {
+    var userJsFile = profDir.clone();
+    userJsFile.append("user.js");
+    if (!userJsFile.exists()) {
+      var userJsFos = Components.classes["@mozilla.org/network/file-output-stream;1"]
+                                .createInstance(Components.interfaces.nsIFileOutputStream);
+      userJsFos.init(userJsFile, 0x02 | 0x08 | 0x20, 438, 0);
+      var userJsConv = Components.classes["@mozilla.org/intl/converter-output-stream;1"]
+                                 .createInstance(Components.interfaces.nsIConverterOutputStream);
+      userJsConv.init(userJsFos, "UTF-8", 0, 0);
+      userJsConv.writeString(
+        'user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);\\n' +
+        'user_pref("browser.startup.page", 1);\\n' +
+        'user_pref("browser.newtabpage.enabled", true);\\n' +
+        'user_pref("browser.newtabpage.activity-stream.enabled", false);\\n' +
+        'user_pref("browser.search.defaultEngine.US", "Google");\\n'
+      );
+      userJsConv.close();
+      log("Initialized default user.js in profile");
+    }
+  } catch (ujsErr) {
+    log("Error initializing user.js: " + ujsErr);
+  }
 } catch (syncErr) {
   log("Profile theme sync error: " + syncErr);
 }
@@ -381,10 +406,6 @@ try {
         1,
     )
 
-    cfg = cfg.replace(
-        '    function relocateUblockBtn(node) {\n      if (!node) return;',
-        '    function relocateUblockBtn(node) {\n      try {\n        if (window.CustomizableUI) {\n          window.CustomizableUI.removeWidgetFromArea("ublock0_raymondhill_net-browser-action");\n        }\n      } catch(e) {}\n      if (node) {\n        try {\n          node.style.setProperty("display", "none", "important");\n          node.setAttribute("hidden", "true");\n        } catch(e) {}\n      }\n      return;',
-    )
     cfg = cfg.replace(
         'var knownSkipIds  = ["urlbar-container", "stop-reload-button",\n                         "sidebar-button", "developer-button",\n                         "fxa-toolbar-button", "unified-extensions-button"];',
         'var knownSkipIds  = ["urlbar-container", "stop-reload-button",\n                         "sidebar-button", "developer-button",\n                         "fxa-toolbar-button", "fxa-toolbar-menu-button", "unified-extensions-button", "vertical-spacer"];',

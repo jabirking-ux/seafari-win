@@ -250,12 +250,5 @@
     list-style-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath fill='currentColor' d='m8 1a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7zm0 1a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zm-5 8c-1.1 0-2 0.9-2 2v2a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2c0-1.1-0.9-2-2-2h-10zm0 1h10a1 1 0 0 1 1 1v1h-12v-1a1 1 0 0 1 1-1z'/%3E%3C/svg%3E") !important;
 }
 
-/* 5. Never auto-pin uBlock Origin to the toolbar/URL bar (kept accessible via puzzle piece menu) */
-#nav-bar #ublock0_raymondhill_net-browser-action,
-#nav-bar [id*="ublock"][id*="browser-action"],
-#nav-bar #ublock0_raymondhill_net-BAP {
-    display: none !important;
-    visibility: collapse !important;
-}
 
 
