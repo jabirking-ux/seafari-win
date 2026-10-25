@@ -182,8 +182,16 @@ pref("termsofuse.firstAcceptedDate", "1700000000000");
 pref("browser.aboutwelcome.enabled", false);
 pref("browser.nova.enabled", false);
 pref("browser.newtabpage.activity-stream.nova.enabled", false);
+pref("toolkit.crashreporter.enabled", false);
+pref("breakpad.reportURL", "");
+pref("browser.tabs.crashReporting.sendReport", false);
+pref("browser.crashReports.unsubmittedCheck.enabled", false);
+pref("browser.crashReports.unsubmittedCheck.autoSubmit2", false);
+pref("datareporting.healthreport.uploadEnabled", false);
+pref("datareporting.policy.dataSubmissionEnabled", false);
 pref("toolkit.startup.max_resumed_crashes", -1);
-pref("browser.sessionstore.resume_from_crash", true);
+pref("browser.sessionstore.resume_from_crash", false);
+pref("browser.sessionstore.max_resumed_crashes", -1);
 pref("datareporting.policy.dataSubmissionPolicyBypassNotification", true);
 pref("datareporting.policy.firstRunURL", "");
 pref("browser.messaging-system.whatsNewPanel.enabled", false);
@@ -263,8 +271,16 @@ def extract_seafari_cfg_from_linux_script(linux_script_path):
         '  pref("browser.aboutwelcome.enabled", false);\n'
         '  pref("browser.nova.enabled", false);\n'
         '  pref("browser.newtabpage.activity-stream.nova.enabled", false);\n'
+        '  pref("toolkit.crashreporter.enabled", false);\n'
+        '  pref("breakpad.reportURL", "");\n'
+        '  pref("browser.tabs.crashReporting.sendReport", false);\n'
+        '  pref("browser.crashReports.unsubmittedCheck.enabled", false);\n'
+        '  pref("browser.crashReports.unsubmittedCheck.autoSubmit2", false);\n'
+        '  pref("datareporting.healthreport.uploadEnabled", false);\n'
+        '  pref("datareporting.policy.dataSubmissionEnabled", false);\n'
         '  pref("toolkit.startup.max_resumed_crashes", -1);\n'
-        '  pref("browser.sessionstore.resume_from_crash", true);\n'
+        '  pref("browser.sessionstore.resume_from_crash", false);\n'
+        '  pref("browser.sessionstore.max_resumed_crashes", -1);\n'
         '  pref("datareporting.policy.dataSubmissionPolicyBypassNotification", true);\n'
         '  pref("datareporting.policy.firstRunURL", "");'
     )
@@ -302,8 +318,16 @@ try {
   pb.setBoolPref("browser.aboutwelcome.enabled", false);
   pb.setBoolPref("browser.nova.enabled", false);
   pb.setBoolPref("browser.newtabpage.activity-stream.nova.enabled", false);
+  pb.setBoolPref("toolkit.crashreporter.enabled", false);
+  pb.setCharPref("breakpad.reportURL", "");
+  pb.setBoolPref("browser.tabs.crashReporting.sendReport", false);
+  pb.setBoolPref("browser.crashReports.unsubmittedCheck.enabled", false);
+  pb.setBoolPref("browser.crashReports.unsubmittedCheck.autoSubmit2", false);
+  pb.setBoolPref("datareporting.healthreport.uploadEnabled", false);
+  pb.setBoolPref("datareporting.policy.dataSubmissionEnabled", false);
   pb.setIntPref("toolkit.startup.max_resumed_crashes", -1);
-  pb.setBoolPref("browser.sessionstore.resume_from_crash", true);
+  pb.setBoolPref("browser.sessionstore.resume_from_crash", false);
+  pb.setIntPref("browser.sessionstore.max_resumed_crashes", -1);
   pb.setBoolPref("datareporting.policy.dataSubmissionPolicyBypassNotification", true);
 } catch (prefErr) {}
 
@@ -806,6 +830,8 @@ def patch_application_ini(ini_path):
     content = re.sub(r"^Name=.*", "Name=Seafari", content, flags=re.M)
     content = re.sub(r"^RemotingName=.*", "RemotingName=seafari", content, flags=re.M)
     content = re.sub(r"^ID=.*", "ID=seafari@inledgroup", content, flags=re.M)
+    content = re.sub(r"^Enabled=1", "Enabled=0", content, flags=re.M)
+    content = re.sub(r"^ServerURL=.*", "ServerURL=", content, flags=re.M)
     if "CodeName=" not in content:
         content = content.replace("[App]", "[App]\nCodeName=Seafari", 1)
     with open(ini_path, "w", encoding="utf-8") as f:
@@ -992,10 +1018,22 @@ def main():
         "policies": {
             "DisableAppUpdate": True,
             "DontCheckDefaultBrowser": True,
+            "DisableTelemetry": True,
+            "DisableFeedbackCommands": True,
             "OverrideFirstRunPage": "",
             "OverridePostUpdatePage": "",
             "SearchEngines": {"Default": "Google"},
             "Preferences": {
+                "toolkit.crashreporter.enabled": False,
+                "breakpad.reportURL": "",
+                "browser.tabs.crashReporting.sendReport": False,
+                "browser.crashReports.unsubmittedCheck.enabled": False,
+                "browser.crashReports.unsubmittedCheck.autoSubmit2": False,
+                "datareporting.healthreport.uploadEnabled": False,
+                "datareporting.policy.dataSubmissionEnabled": False,
+                "toolkit.startup.max_resumed_crashes": -1,
+                "browser.sessionstore.resume_from_crash": False,
+                "browser.sessionstore.max_resumed_crashes": -1,
                 "extensions.webextensions.remote": False,
                 "browser.tabs.remote.autostart": False,
                 "toolkit.legacyUserProfileCustomizations.stylesheets": True,
@@ -1054,7 +1092,9 @@ def main():
             'pref("general.config.sandbox_enabled", false);\n'
         )
 
-    linux_script = os.path.join(repo_root, "build_seafari_linux.sh")
+    linux_script = os.path.join(repo_root, "build_seafari.sh")
+    if not os.path.exists(linux_script):
+        linux_script = os.path.join(repo_root, "build_seafari_linux.sh")
     seafari_cfg = extract_seafari_cfg_from_linux_script(linux_script)
     with open(os.path.join(firefox_dir, "seafari.cfg"), "w", encoding="utf-8") as f:
         f.write(seafari_cfg + "\n")
@@ -1101,7 +1141,7 @@ def main():
     patch_application_ini(os.path.join(firefox_dir, "application.ini"))
     patch_application_ini(os.path.join(firefox_dir, "browser", "application.ini"))
 
-    # 6. Remove *.sig signature files so modified PE resources in firefox.exe/seafari.exe are accepted
+    # 6. Remove *.sig signature files and crash reporter executables/telemetry daemons
     for root_dir, _, files in os.walk(firefox_dir):
         for file in files:
             if file.endswith(".sig"):
@@ -1109,6 +1149,21 @@ def main():
                     os.remove(os.path.join(root_dir, file))
                 except OSError:
                     pass
+
+    for cfile in [
+        "crashreporter.exe",
+        "crashreporter.ini",
+        "crashhelper.exe",
+        "minidump-analyzer.exe",
+        "pingsender.exe",
+        "default-browser-agent.exe",
+    ]:
+        cpath = os.path.join(firefox_dir, cfile)
+        if os.path.exists(cpath):
+            try:
+                os.remove(cpath)
+            except OSError:
+                pass
 
     # 7. Replace Windows VisualElements icons & manifests
     png_src = os.path.join(repo_root, "seafari.png")

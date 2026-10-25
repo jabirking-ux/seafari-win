@@ -145,6 +145,52 @@
     display: none !important;
 }
 
+/* macOS Traffic Light Triad Hover Effect: hovering the buttonbox reveals glyphs on all three buttons */
+#nav-bar .titlebar-buttonbox:hover .titlebar-close,
+#titlebar .titlebar-buttonbox:hover .titlebar-close {
+    background-image: url("MacTahoe/titlebuttons/titlebutton-close-hover-dark.svg") !important;
+}
+#nav-bar .titlebar-buttonbox:hover .titlebar-min,
+#titlebar .titlebar-buttonbox:hover .titlebar-min {
+    background-image: url("MacTahoe/titlebuttons/titlebutton-minimize-hover-dark.svg") !important;
+}
+#nav-bar .titlebar-buttonbox:hover .titlebar-max,
+#nav-bar .titlebar-buttonbox:hover .titlebar-restore,
+#titlebar .titlebar-buttonbox:hover .titlebar-max,
+#titlebar .titlebar-buttonbox:hover .titlebar-restore {
+    background-image: url("MacTahoe/titlebuttons/titlebutton-maximize-hover-dark.svg") !important;
+}
+
+:root[seafari-toolbar-theme="light"] #nav-bar .titlebar-buttonbox:hover .titlebar-close,
+:root[seafari-toolbar-theme="light"] #titlebar .titlebar-buttonbox:hover .titlebar-close {
+    background-image: url("MacTahoe/titlebuttons/titlebutton-close-hover.svg") !important;
+}
+:root[seafari-toolbar-theme="light"] #nav-bar .titlebar-buttonbox:hover .titlebar-min,
+:root[seafari-toolbar-theme="light"] #titlebar .titlebar-buttonbox:hover .titlebar-min {
+    background-image: url("MacTahoe/titlebuttons/titlebutton-minimize-hover.svg") !important;
+}
+:root[seafari-toolbar-theme="light"] #nav-bar .titlebar-buttonbox:hover .titlebar-max,
+:root[seafari-toolbar-theme="light"] #nav-bar .titlebar-buttonbox:hover .titlebar-restore,
+:root[seafari-toolbar-theme="light"] #titlebar .titlebar-buttonbox:hover .titlebar-max,
+:root[seafari-toolbar-theme="light"] #titlebar .titlebar-buttonbox:hover .titlebar-restore {
+    background-image: url("MacTahoe/titlebuttons/titlebutton-maximize-hover.svg") !important;
+}
+
+#nav-bar .titlebar-close:active,
+#titlebar .titlebar-close:active {
+    background-image: url("MacTahoe/titlebuttons/titlebutton-close-active-dark.svg") !important;
+}
+#nav-bar .titlebar-min:active,
+#titlebar .titlebar-min:active {
+    background-image: url("MacTahoe/titlebuttons/titlebutton-minimize-active-dark.svg") !important;
+}
+#nav-bar .titlebar-max:active,
+#nav-bar .titlebar-restore:active,
+#titlebar .titlebar-max:active,
+#titlebar .titlebar-restore:active {
+    background-image: url("MacTahoe/titlebuttons/titlebutton-maximize-active-dark.svg") !important;
+}
+
 /* 3. Keep #toolbar-menubar hidden on Windows (matching Linux global-menu behavior) */
 #toolbar-menubar[autohide="true"][inactive="true"],
 #toolbar-menubar:not([open="true"]) {
@@ -265,7 +311,7 @@
     overflow: hidden !important;
 }
 
-/* 7. Initial Launch 2-Second Hold: hide initial window while rendering/styles settle, then smoothly reveal */
+/* 7. Initial Launch 2-Second Hold: hide initial window while rendering/styles settle, then smoothly reveal with macOS zoom */
 :root[seafari-prelaunch],
 :root[seafari-prelaunch] #main-window,
 :root[seafari-prelaunch] #navigator-toolbox,
@@ -275,8 +321,19 @@
     pointer-events: none !important;
 }
 
+:root[seafari-prelaunch] #browser,
+:root[seafari-prelaunch] #navigator-toolbox {
+    transform: scale(0.97) !important;
+}
+
 :root {
     transition: opacity 300ms cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+#browser, #navigator-toolbox {
+    transition:
+        transform 320ms cubic-bezier(0.16, 1, 0.3, 1),
+        opacity 300ms cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
 
