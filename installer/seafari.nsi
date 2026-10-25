@@ -69,9 +69,16 @@ Section "Seafari Browser" SecMain
 
   WriteUninstaller "$INSTDIR\Uninstall.exe"
 
+  ; Clean up any legacy Firefox shortcuts so Start Menu and Desktop never show "Firefox"
+  Delete "$SMPROGRAMS\Firefox.lnk"
+  Delete "$SMPROGRAMS\Firefox Private Browsing.lnk"
+  Delete "$DESKTOP\Firefox.lnk"
+  Delete "$DESKTOP\Firefox Private Browsing.lnk"
+
   ; Create Start Menu and Desktop shortcuts
   CreateDirectory "$SMPROGRAMS\Seafari"
   CreateShortCut "$SMPROGRAMS\Seafari\Seafari.lnk" "$INSTDIR\seafari.exe" "" "$INSTDIR\seafari.exe" 0
+  CreateShortCut "$SMPROGRAMS\Seafari.lnk" "$INSTDIR\seafari.exe" "" "$INSTDIR\seafari.exe" 0
   CreateShortCut "$SMPROGRAMS\Seafari\Uninstall Seafari.lnk" "$INSTDIR\Uninstall.exe" "" "$INSTDIR\seafari.ico" 0
   CreateShortCut "$DESKTOP\Seafari.lnk" "$INSTDIR\seafari.exe" "" "$INSTDIR\seafari.exe" 0
 SectionEnd

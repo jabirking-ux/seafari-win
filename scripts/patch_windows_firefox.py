@@ -303,65 +303,6 @@ try {
   );
   SetCurrentProcessExplicitAppUserModelIDFn("InledGroup.Seafari");
   log("Explicit AppUserModelID set to InledGroup.Seafari");
-
-  // Synchronous WH_CBT window hook: intercept MozillaWindowClass before it is shown or painted
-  try {
-    var u32Early = ctypes.open("user32.dll");
-    var k32Early = ctypes.open("kernel32.dll");
-    var HookProcType = ctypes.FunctionType(ctypes.stdcall_abi, ctypes.long, [ctypes.int, ctypes.uintptr_t, ctypes.uintptr_t]);
-    var SetWindowsHookExWFnEarly = u32Early.declare("SetWindowsHookExW", ctypes.winapi_abi, ctypes.voidptr_t, ctypes.int, HookProcType.ptr, ctypes.voidptr_t, ctypes.uint32_t);
-    var CallNextHookExFnEarly = u32Early.declare("CallNextHookEx", ctypes.winapi_abi, ctypes.long, ctypes.voidptr_t, ctypes.int, ctypes.uintptr_t, ctypes.uintptr_t);
-    var UnhookWindowsHookExFnEarly = u32Early.declare("UnhookWindowsHookEx", ctypes.winapi_abi, ctypes.int, ctypes.voidptr_t);
-    var GetCurrentThreadIdFnEarly = k32Early.declare("GetCurrentThreadId", ctypes.winapi_abi, ctypes.uint32_t);
-    var GetClassNameWFnEarly = u32Early.declare("GetClassNameW", ctypes.winapi_abi, ctypes.int, ctypes.voidptr_t, ctypes.jschar.ptr, ctypes.int);
-    var GetWindowLongWFnEarly = u32Early.declare("GetWindowLongW", ctypes.winapi_abi, ctypes.long, ctypes.voidptr_t, ctypes.int);
-    var SetWindowLongWFnEarly = u32Early.declare("SetWindowLongW", ctypes.winapi_abi, ctypes.long, ctypes.voidptr_t, ctypes.int, ctypes.long);
-    var SetLayeredWindowAttributesFnEarly = u32Early.declare("SetLayeredWindowAttributes", ctypes.winapi_abi, ctypes.int, ctypes.voidptr_t, ctypes.uint32_t, ctypes.uint8_t, ctypes.uint32_t);
-
-    var WH_CBT_EARLY = 5;
-    var HCBT_CREATEWND_EARLY = 3;
-    var GWL_EXSTYLE_EARLY = -20;
-    var WS_EX_LAYERED_EARLY = 0x00080000;
-    var LWA_ALPHA_EARLY = 0x02;
-
-    var hHookCBT = null;
-    var cbtCallback = HookProcType.ptr(function(nCode, wParam, lParam) {
-      try {
-        if (nCode === HCBT_CREATEWND_EARLY) {
-          var hwnd = ctypes.voidptr_t(ctypes.UInt64(wParam));
-          var buf = new (ctypes.ArrayType(ctypes.jschar, 256))();
-          GetClassNameWFnEarly(hwnd, buf, 256);
-          var clsName = buf.readString();
-          if (clsName === "MozillaWindowClass") {
-            var ex = GetWindowLongWFnEarly(hwnd, GWL_EXSTYLE_EARLY);
-            if ((ex & WS_EX_LAYERED_EARLY) === 0) {
-              SetWindowLongWFnEarly(hwnd, GWL_EXSTYLE_EARLY, ex | WS_EX_LAYERED_EARLY);
-            }
-            SetLayeredWindowAttributesFnEarly(hwnd, 0, 0, LWA_ALPHA_EARLY);
-            log("CBT Hook: Intercepted " + clsName + " at creation! HWND: " + wParam + " set to WS_EX_LAYERED alpha=0");
-          }
-        }
-      } catch(err) {
-        log("CBT callback err: " + err);
-      }
-      return CallNextHookExFnEarly(hHookCBT, nCode, wParam, lParam);
-    });
-
-    var curThreadId = GetCurrentThreadIdFnEarly();
-    hHookCBT = SetWindowsHookExWFnEarly(WH_CBT_EARLY, cbtCallback, null, curThreadId);
-    globalThis._seafariUnhookCBT = function() {
-      if (hHookCBT && !hHookCBT.isNull()) {
-        try {
-          UnhookWindowsHookExFnEarly(hHookCBT);
-          hHookCBT = null;
-          log("CBT hook successfully unhooked after startup");
-        } catch(e) {}
-      }
-    };
-    log("Installed synchronous WH_CBT hook on thread " + curThreadId);
-  } catch (hookErr) {
-    log("WH_CBT hook setup failed: " + hookErr);
-  }
 } catch (aumidErr) {
   log("AppUserModelID init error: " + aumidErr);
 }
@@ -578,44 +519,6 @@ try {
           }
         }
 
-        // 2-Second Startup Hold: Keep the initial window hidden/transparent for 2 seconds while startup finishes
-        if (!globalThis._seafariStartupComplete) {
-          globalThis._seafariStartupComplete = true;
-          doc.documentElement.setAttribute("seafari-prelaunch", "true");
-          setWinAlpha(0);
-
-          var prelaunchRetries = 0;
-          var prelaunchRetryTimer = win.setInterval(function() {
-            prelaunchRetries++;
-            if (setWinAlpha(0) || prelaunchRetries > 20) {
-              win.clearInterval(prelaunchRetryTimer);
-            }
-          }, 50);
-
-          win.setTimeout(function() {
-            if (globalThis._seafariUnhookCBT) {
-              try { globalThis._seafariUnhookCBT(); } catch(e) {}
-            }
-            win.clearInterval(prelaunchRetryTimer);
-            doc.documentElement.removeAttribute("seafari-prelaunch");
-            try {
-              doc.documentElement.style.removeProperty("opacity");
-              doc.documentElement.style.removeProperty("visibility");
-            } catch (e) {}
-            var curA = 0;
-            var fadeTimer = win.setInterval(function() {
-              curA += 32;
-              if (curA >= 255) {
-                win.clearInterval(fadeTimer);
-                setWinAlpha(255);
-              } else {
-                setWinAlpha(curA);
-              }
-            }, 16);
-            try { win.focus(); } catch(e) {}
-          }, 2000);
-        }
-
         win.setInterval(function() {
           try {
             var cx = win.screenX;
@@ -740,20 +643,6 @@ def patch_omni_tree(temp_dir, repo_root, is_browser_omni=False):
         if os.path.exists(firefox_prefs_js):
             with open(firefox_prefs_js, "a", encoding="utf-8") as f:
                 f.write("\n" + ONBOARDING_BYPASS_PREFS_JS)
-
-        # Patch browser.xhtml so the window starts with 0 opacity from the very first parsed byte
-        browser_xhtml = os.path.join(temp_dir, "chrome", "browser", "content", "browser", "browser.xhtml")
-        if os.path.exists(browser_xhtml):
-            with open(browser_xhtml, "r", encoding="utf-8") as f:
-                bx = f.read()
-            if 'seafari-prelaunch="true"' not in bx:
-                bx = bx.replace(
-                    '<html id="main-window"',
-                    '<html id="main-window" seafari-prelaunch="true" style="opacity: 0 !important; visibility: hidden !important;"',
-                    1,
-                )
-                with open(browser_xhtml, "w", encoding="utf-8") as f:
-                    f.write(bx)
     else:
         copy_tree_overlay(os.path.join(repo_root, "chrome", "gre"), temp_dir)
 
@@ -1262,14 +1151,65 @@ def main():
     if os.path.exists(ff_manifest):
         shutil.copy2(ff_manifest, seafari_manifest)
 
-    # 8. Patch Win32 PE resources (icons + version strings + manifest) in firefox.exe and seafari.exe
+    # 8. Build dedicated 2-second hold native launcher (seafari.exe) and patch Win32 PE resources
     ff_exe = os.path.join(firefox_dir, "firefox.exe")
     seafari_exe = os.path.join(firefox_dir, "seafari.exe")
     if os.path.exists(ff_exe):
         patch_pe_resources_inplace(ff_exe, png_src)
-        shutil.copy2(ff_exe, seafari_exe)
-    elif os.path.exists(seafari_exe):
-        patch_pe_resources_inplace(seafari_exe, png_src)
+
+    launcher_c = os.path.join(repo_root, "src", "seafari_launcher.c")
+    launcher_rc = os.path.join(repo_root, "src", "seafari_launcher.rc")
+    built_launcher = False
+    if os.path.exists(launcher_c):
+        res_obj = None
+        if os.path.exists(launcher_rc):
+            if shutil.which("x86_64-w64-mingw32-windres"):
+                res_out = os.path.join(repo_root, "src", "seafari_launcher.o")
+                try:
+                    subprocess.run(["x86_64-w64-mingw32-windres", f"-I{repo_root}", "-i", launcher_rc, "-o", res_out], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    res_obj = res_out
+                except Exception:
+                    pass
+            elif shutil.which("llvm-rc"):
+                res_out = os.path.join(repo_root, "src", "seafari_launcher.res")
+                try:
+                    subprocess.run(["llvm-rc", f"/I{repo_root}", f"/fo{res_out}", launcher_rc], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    res_obj = res_out
+                except Exception:
+                    pass
+
+        compilers = []
+        if res_obj:
+            compilers.append(["x86_64-w64-mingw32-gcc", "-O2", "-mwindows", launcher_c, res_obj, "-o", seafari_exe, "-lshell32"])
+            compilers.append(["clang", "-O2", launcher_c, res_obj, "-o", seafari_exe, "-Xlinker", "/subsystem:windows", "-lshell32"])
+            compilers.append(["gcc", "-O2", "-mwindows", launcher_c, res_obj, "-o", seafari_exe, "-lshell32"])
+        compilers.extend([
+            ["x86_64-w64-mingw32-gcc", "-O2", "-mwindows", launcher_c, "-o", seafari_exe, "-lshell32"],
+            ["clang", "-O2", launcher_c, "-o", seafari_exe, "-Xlinker", "/subsystem:windows", "-lshell32"],
+            ["gcc", "-O2", "-mwindows", launcher_c, "-o", seafari_exe, "-lshell32"],
+        ])
+
+        for cmd in compilers:
+            try:
+                subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                patch_pe_resources_inplace(seafari_exe, png_src)
+                built_launcher = True
+                print("[*] Successfully compiled native 2-second hold launcher: seafari.exe")
+                break
+            except Exception:
+                continue
+
+        if res_obj and os.path.exists(res_obj):
+            try:
+                os.remove(res_obj)
+            except Exception:
+                pass
+
+    if not built_launcher:
+        if os.path.exists(ff_exe):
+            shutil.copy2(ff_exe, seafari_exe)
+        elif os.path.exists(seafari_exe):
+            patch_pe_resources_inplace(seafari_exe, png_src)
 
     # 9. Register InledGroup.Seafari in Windows Registry if running on Windows
     if sys.platform == "win32":
@@ -1294,6 +1234,23 @@ def main():
             print("[*] Successfully registered InledGroup.Seafari in Windows Registry")
         except Exception as reg_err:
             print(f"[!] Warning: Could not register AppUserModelId in registry: {reg_err}")
+
+        # 10. Clean up any legacy Start Menu shortcuts (Firefox.lnk -> Seafari.lnk)
+        try:
+            smp = os.path.expandvars(r"%APPDATA%\Microsoft\Windows\Start Menu\Programs")
+            ff_lnk = os.path.join(smp, "Firefox.lnk")
+            sea_lnk = os.path.join(smp, "Seafari.lnk")
+            if os.path.exists(ff_lnk):
+                if os.path.exists(sea_lnk):
+                    os.remove(ff_lnk)
+                else:
+                    shutil.move(ff_lnk, sea_lnk)
+                print("[*] Fixed Start Menu shortcut from Firefox.lnk to Seafari.lnk")
+            ff_pb = os.path.join(smp, "Firefox Private Browsing.lnk")
+            if os.path.exists(ff_pb):
+                os.remove(ff_pb)
+        except Exception:
+            pass
 
     print("[+] Successfully patched Windows Firefox build into Seafari!")
 

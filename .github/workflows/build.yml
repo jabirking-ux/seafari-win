@@ -97,7 +97,7 @@ jobs:
         if: steps.check_updates.outputs.should_build == 'true'
         run: |
           sudo apt-get update
-          sudo apt-get install -y p7zip-full nsis zip unzip curl jq python3
+          sudo apt-get install -y p7zip-full nsis zip unzip curl jq python3 gcc-mingw-w64-x86-64
 
       - name: Build Seafari for Windows (Portable ZIP & NSIS Installer)
         if: steps.check_updates.outputs.should_build == 'true'
