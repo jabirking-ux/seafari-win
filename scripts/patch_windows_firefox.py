@@ -1151,7 +1151,7 @@ def main():
     if os.path.exists(ff_manifest):
         shutil.copy2(ff_manifest, seafari_manifest)
 
-    # 8. Build dedicated 2-second hold native launcher (seafari.exe) and patch Win32 PE resources
+    # 8. Build dedicated 1.5-second hold native launcher (seafari.exe) and patch Win32 PE resources
     ff_exe = os.path.join(firefox_dir, "firefox.exe")
     seafari_exe = os.path.join(firefox_dir, "seafari.exe")
     if os.path.exists(ff_exe):
@@ -1194,7 +1194,7 @@ def main():
                 subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 patch_pe_resources_inplace(seafari_exe, png_src)
                 built_launcher = True
-                print("[*] Successfully compiled native 2-second hold launcher: seafari.exe")
+                print("[*] Successfully compiled native 1.5-second hold launcher: seafari.exe")
                 break
             except Exception:
                 continue

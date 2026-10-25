@@ -311,7 +311,7 @@
     overflow: hidden !important;
 }
 
-/* 7. Initial Launch 2-Second Hold: hide initial window while rendering/styles settle, then smoothly reveal with macOS zoom */
+/* 7. Initial Launch Hold: hide initial window while rendering/styles settle, then smoothly reveal with macOS zoom */
 :root[seafari-prelaunch],
 :root[seafari-prelaunch] #main-window,
 :root[seafari-prelaunch] #navigator-toolbox,

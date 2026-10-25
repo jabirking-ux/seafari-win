@@ -3,8 +3,8 @@
 #include <shellapi.h>
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nShowCmd) {
-    // 2-second startup hold before launching browser
-    Sleep(2000);
+    // 1.5-second startup hold before launching browser
+    Sleep(1500);
 
     wchar_t exePath[MAX_PATH];
     GetModuleFileNameW(NULL, exePath, MAX_PATH);
