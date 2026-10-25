@@ -553,10 +553,6 @@ try {
         window_move_js + '\n      if (urlbar) {\n        urlbar.addEventListener("focusin", function() { setHidden(false); updateToolbarLuminance(); });',
         1,
     )
-    cfg = cfg.replace(
-        '  var observer = {\n    observe: function(aSubject, aTopic, aData) {\n      var window = aSubject;\n      window.addEventListener("load", function() {\n        if (window.location.href === "chrome://browser/content/browser.xhtml") {\n          setupUI(window);\n        }\n      }, { once: true });\n    }\n  };\n\n  observerService.addObserver(observer, "domwindowopened", false);',
-        '  var observer = {\n    observe: function(aSubject, aTopic, aData) {\n      var window = aSubject;\n      try {\n        if (!globalThis._seafariStartupComplete && window.document && window.document.documentElement) {\n          window.document.documentElement.setAttribute("seafari-prelaunch", "true");\n        }\n      } catch (e) {}\n      window.addEventListener("load", function() {\n        if (window.location.href === "chrome://browser/content/browser.xhtml") {\n          setupUI(window);\n        }\n      }, { once: true });\n    }\n  };\n\n  observerService.addObserver(observer, "domwindowopened", false);',
-    )
     return cfg
 
 
