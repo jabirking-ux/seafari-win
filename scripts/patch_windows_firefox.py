@@ -195,7 +195,8 @@ pref("browser.sessionstore.max_resumed_crashes", -1);
 pref("browser.sessionstore.interval", 60000);
 pref("browser.tabs.unloadOnLowMemory", true);
 pref("browser.low_commit_space_threshold_mb", 2048);
-pref("browser.tabs.min_inactive_duration_before_unload", 120000);
+pref("browser.tabs.min_inactive_duration_before_unload", 60000);
+pref("browser.tabs.remote.warmup.enabled", false);
 pref("gfx.webrender.all", true);
 pref("gfx.webrender.pre-cache-shaders", true);
 pref("gfx.canvas.accelerated", true);
@@ -209,30 +210,43 @@ pref("network.http.max-persistent-connections-per-server", 8);
 pref("network.http.max-urgent-start-excess-connections", 4);
 pref("network.http.pacing.requests.enabled", false);
 pref("network.http.speculative-parallel-limit", 0);
+pref("network.prefetch-next", false);
+pref("network.dns.disablePrefetch", true);
 pref("content.notify.interval", 60000);
 pref("content.notify.ontimer", true);
 pref("content.interrupt.parsing", true);
 pref("content.max.tokenizing.time", 180000);
 pref("image.mem.decode_bytes_at_a_time", 65536);
-pref("image.mem.surfacecache.max_size_kb", 131072);
-pref("image.mem.surfacecache.min_size_kb", 16384);
+pref("image.mem.surfacecache.max_size_kb", 65536);
+pref("image.mem.surfacecache.min_size_kb", 8192);
 pref("image.mem.surfacecache.discard_factor", 1);
-pref("browser.sessionhistory.max_entries", 8);
+pref("image.mem.animated.discardable", true);
+pref("browser.sessionhistory.max_entries", 5);
 pref("browser.sessionhistory.max_total_viewers", 1);
 pref("browser.cache.memory.enable", true);
-pref("browser.cache.memory.capacity", 131072);
+pref("browser.cache.memory.capacity", 65536);
 pref("browser.cache.disk.enable", true);
 pref("browser.cache.disk.metadata_memory_limit", 250);
 pref("media.autoplay.default", 5);
 pref("media.memory_cache_max_size", 16384);
 pref("media.memory_caches_combined_limit_kb", 65536);
+pref("dom.min_background_timeout_value", 1000);
+pref("dom.timeout.enable_budget_timer_throttling", true);
+pref("dom.timeout.background_budget_ms", 10);
+pref("dom.timeout.background_throttling_max_budget", 50);
+pref("dom.timeout.throttling_delay", 5000);
 pref("javascript.options.mem.gc_compacting", true);
-pref("javascript.options.mem.gc_empty_chunk_count", 2);
-pref("javascript.options.mem.high_frequency_low_limit_mb", 32);
-pref("javascript.options.mem.high_frequency_high_limit_mb", 128);
+pref("javascript.options.compact_on_user_inactive", true);
+pref("javascript.options.compact_on_user_inactive_delay", 3000);
+pref("javascript.options.mem.gc_empty_chunk_count", 1);
+pref("javascript.options.mem.gc_min_empty_chunk_count", 1);
+pref("javascript.options.mem.gc_max_empty_chunk_count", 2);
+pref("javascript.options.mem.high_frequency_low_limit_mb", 24);
+pref("javascript.options.mem.high_frequency_high_limit_mb", 96);
+pref("javascript.options.mem.high_frequency_time_limit_ms", 500);
 pref("javascript.options.mem.gc_incremental_slice_ms", 10);
-pref("dom.ipc.processCount", 3);
-pref("dom.ipc.processCount.webIsolated", 3);
+pref("dom.ipc.processCount", 2);
+pref("dom.ipc.processCount.webIsolated", 2);
 pref("datareporting.policy.dataSubmissionPolicyBypassNotification", true);
 pref("datareporting.policy.firstRunURL", "");
 pref("browser.messaging-system.whatsNewPanel.enabled", false);
@@ -325,7 +339,8 @@ def extract_seafari_cfg_from_linux_script(linux_script_path):
         '  pref("browser.sessionstore.interval", 60000);\n'
         '  pref("browser.tabs.unloadOnLowMemory", true);\n'
         '  pref("browser.low_commit_space_threshold_mb", 2048);\n'
-        '  pref("browser.tabs.min_inactive_duration_before_unload", 120000);\n'
+        '  pref("browser.tabs.min_inactive_duration_before_unload", 60000);\n'
+        '  pref("browser.tabs.remote.warmup.enabled", false);\n'
         '  pref("gfx.webrender.all", true);\n'
         '  pref("gfx.webrender.pre-cache-shaders", true);\n'
         '  pref("gfx.canvas.accelerated", true);\n'
@@ -339,30 +354,43 @@ def extract_seafari_cfg_from_linux_script(linux_script_path):
         '  pref("network.http.max-urgent-start-excess-connections", 4);\n'
         '  pref("network.http.pacing.requests.enabled", false);\n'
         '  pref("network.http.speculative-parallel-limit", 0);\n'
+        '  pref("network.prefetch-next", false);\n'
+        '  pref("network.dns.disablePrefetch", true);\n'
         '  pref("content.notify.interval", 60000);\n'
         '  pref("content.notify.ontimer", true);\n'
         '  pref("content.interrupt.parsing", true);\n'
         '  pref("content.max.tokenizing.time", 180000);\n'
         '  pref("image.mem.decode_bytes_at_a_time", 65536);\n'
-        '  pref("image.mem.surfacecache.max_size_kb", 131072);\n'
-        '  pref("image.mem.surfacecache.min_size_kb", 16384);\n'
+        '  pref("image.mem.surfacecache.max_size_kb", 65536);\n'
+        '  pref("image.mem.surfacecache.min_size_kb", 8192);\n'
         '  pref("image.mem.surfacecache.discard_factor", 1);\n'
-        '  pref("browser.sessionhistory.max_entries", 8);\n'
+        '  pref("image.mem.animated.discardable", true);\n'
+        '  pref("browser.sessionhistory.max_entries", 5);\n'
         '  pref("browser.sessionhistory.max_total_viewers", 1);\n'
         '  pref("browser.cache.memory.enable", true);\n'
-        '  pref("browser.cache.memory.capacity", 131072);\n'
+        '  pref("browser.cache.memory.capacity", 65536);\n'
         '  pref("browser.cache.disk.enable", true);\n'
         '  pref("browser.cache.disk.metadata_memory_limit", 250);\n'
         '  pref("media.autoplay.default", 5);\n'
         '  pref("media.memory_cache_max_size", 16384);\n'
         '  pref("media.memory_caches_combined_limit_kb", 65536);\n'
+        '  pref("dom.min_background_timeout_value", 1000);\n'
+        '  pref("dom.timeout.enable_budget_timer_throttling", true);\n'
+        '  pref("dom.timeout.background_budget_ms", 10);\n'
+        '  pref("dom.timeout.background_throttling_max_budget", 50);\n'
+        '  pref("dom.timeout.throttling_delay", 5000);\n'
         '  pref("javascript.options.mem.gc_compacting", true);\n'
-        '  pref("javascript.options.mem.gc_empty_chunk_count", 2);\n'
-        '  pref("javascript.options.mem.high_frequency_low_limit_mb", 32);\n'
-        '  pref("javascript.options.mem.high_frequency_high_limit_mb", 128);\n'
+        '  pref("javascript.options.compact_on_user_inactive", true);\n'
+        '  pref("javascript.options.compact_on_user_inactive_delay", 3000);\n'
+        '  pref("javascript.options.mem.gc_empty_chunk_count", 1);\n'
+        '  pref("javascript.options.mem.gc_min_empty_chunk_count", 1);\n'
+        '  pref("javascript.options.mem.gc_max_empty_chunk_count", 2);\n'
+        '  pref("javascript.options.mem.high_frequency_low_limit_mb", 24);\n'
+        '  pref("javascript.options.mem.high_frequency_high_limit_mb", 96);\n'
+        '  pref("javascript.options.mem.high_frequency_time_limit_ms", 500);\n'
         '  pref("javascript.options.mem.gc_incremental_slice_ms", 10);\n'
-        '  pref("dom.ipc.processCount", 3);\n'
-        '  pref("dom.ipc.processCount.webIsolated", 3);\n'
+        '  pref("dom.ipc.processCount", 2);\n'
+        '  pref("dom.ipc.processCount.webIsolated", 2);\n'
         '  pref("datareporting.policy.dataSubmissionPolicyBypassNotification", true);\n'
         '  pref("datareporting.policy.firstRunURL", "");'
     )
@@ -1212,7 +1240,8 @@ def main():
                 "browser.sessionstore.interval": 60000,
                 "browser.tabs.unloadOnLowMemory": True,
                 "browser.low_commit_space_threshold_mb": 2048,
-                "browser.tabs.min_inactive_duration_before_unload": 120000,
+                "browser.tabs.min_inactive_duration_before_unload": 60000,
+                "browser.tabs.remote.warmup.enabled": False,
                 "gfx.webrender.all": True,
                 "gfx.webrender.pre-cache-shaders": True,
                 "gfx.canvas.accelerated": True,
@@ -1226,30 +1255,43 @@ def main():
                 "network.http.max-urgent-start-excess-connections": 4,
                 "network.http.pacing.requests.enabled": False,
                 "network.http.speculative-parallel-limit": 0,
+                "network.prefetch-next": False,
+                "network.dns.disablePrefetch": True,
                 "content.notify.interval": 60000,
                 "content.notify.ontimer": True,
                 "content.interrupt.parsing": True,
                 "content.max.tokenizing.time": 180000,
                 "image.mem.decode_bytes_at_a_time": 65536,
-                "image.mem.surfacecache.max_size_kb": 131072,
-                "image.mem.surfacecache.min_size_kb": 16384,
+                "image.mem.surfacecache.max_size_kb": 65536,
+                "image.mem.surfacecache.min_size_kb": 8192,
                 "image.mem.surfacecache.discard_factor": 1,
-                "browser.sessionhistory.max_entries": 8,
+                "image.mem.animated.discardable": True,
+                "browser.sessionhistory.max_entries": 5,
                 "browser.sessionhistory.max_total_viewers": 1,
                 "browser.cache.memory.enable": True,
-                "browser.cache.memory.capacity": 131072,
+                "browser.cache.memory.capacity": 65536,
                 "browser.cache.disk.enable": True,
                 "browser.cache.disk.metadata_memory_limit": 250,
                 "media.autoplay.default": 5,
                 "media.memory_cache_max_size": 16384,
                 "media.memory_caches_combined_limit_kb": 65536,
+                "dom.min_background_timeout_value": 1000,
+                "dom.timeout.enable_budget_timer_throttling": True,
+                "dom.timeout.background_budget_ms": 10,
+                "dom.timeout.background_throttling_max_budget": 50,
+                "dom.timeout.throttling_delay": 5000,
                 "javascript.options.mem.gc_compacting": True,
-                "javascript.options.mem.gc_empty_chunk_count": 2,
-                "javascript.options.mem.high_frequency_low_limit_mb": 32,
-                "javascript.options.mem.high_frequency_high_limit_mb": 128,
+                "javascript.options.compact_on_user_inactive": True,
+                "javascript.options.compact_on_user_inactive_delay": 3000,
+                "javascript.options.mem.gc_empty_chunk_count": 1,
+                "javascript.options.mem.gc_min_empty_chunk_count": 1,
+                "javascript.options.mem.gc_max_empty_chunk_count": 2,
+                "javascript.options.mem.high_frequency_low_limit_mb": 24,
+                "javascript.options.mem.high_frequency_high_limit_mb": 96,
+                "javascript.options.mem.high_frequency_time_limit_ms": 500,
                 "javascript.options.mem.gc_incremental_slice_ms": 10,
-                "dom.ipc.processCount": 3,
-                "dom.ipc.processCount.webIsolated": 3,
+                "dom.ipc.processCount": 2,
+                "dom.ipc.processCount.webIsolated": 2,
                 "extensions.webextensions.remote": False,
                 "browser.tabs.remote.autostart": False,
                 "toolkit.legacyUserProfileCustomizations.stylesheets": True,
