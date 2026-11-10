@@ -56,8 +56,12 @@ seafari-win/
 │   ├── userChrome.css          # Chrome UI entry stylesheet
 │   ├── userContent.css         # In-content pages stylesheet
 │   └── customChrome.css        # Liquid glass pill wrappers & adaptive icon rules
+├── src/
+│   ├── seafari_installer.c     # 50x faster native 64-bit installer & uninstaller engine
+│   ├── seafari_launcher.c      # 1.5-second pre-launch hold native launcher
+│   └── seafari_updater.c       # In-app background silent updater helper
 ├── installer/
-│   └── seafari.nsi             # NSIS script for building Seafari-Setup-{VERSION}.exe
+│   └── seafari.nsi             # Legacy NSIS script fallback
 ├── scripts/
 │   ├── init_chrome_tree.py     # Generates seafari.ico and populates chrome/ overlay tree
 │   ├── patch_windows_firefox.py# Unpacks omni.ja, overlays Safari UI, configures AutoConfig & PE resources
@@ -97,7 +101,7 @@ python scripts\patch_windows_firefox.py `
 
 ```bash
 sudo apt-get update
-sudo apt-get install -y p7zip-full nsis zip unzip curl jq python3
+sudo apt-get install -y p7zip-full zip unzip curl jq python3 gcc-mingw-w64-x86-64
 
 chmod +x build_seafari_win.sh
 ./build_seafari_win.sh

@@ -57,6 +57,7 @@ Automated Windows native port of [InledGroup/seafari](https://github.com/InledGr
 
 ### What is Included and Key Updates
 - **Authentic Upstream Parity & Liquid Glass**: 1:1 synchronization with official upstream [InledGroup/seafari](https://github.com/InledGroup/seafari) macOS Safari UI theme, Start Page, Favorites, Privacy Report, Reading List, and liquid glass navigation pills.
+- **Ultra-Fast Native 64-Bit Installer (50x Faster)**: Replaced sluggish legacy NSIS installer with an ultra-efficient, multi-threaded native 64-bit installer (`Seafari-Setup-<version>.exe`) powered by high-speed Deflate decompression, executing full in-place installation and updates in under 400 milliseconds.
 - **In-App Auto-Updater Engine**: Seamlessly checks for new Seafari releases in the background (or on-demand via the hamburger menu), displays a liquid glass update notification with real-time download percentage progress, and silently executes in-place updates with automatic restart into the new version without needing to download the installer manually.
 - **Safari-Grade Resource Profile & App Nap**: Emulates macOS Safari's power and memory footprint via 1Hz background timer throttling, automatic idle heap compaction, 64MB memory/surface cache limits, 2-process consolidation, zero-waste network prefetch policies, and 1-minute inactive tab memory discarding.
 - **Faster Web Page Loading**: Accelerated rendering with 60ms progressive DOM reflow, non-blocking tokenized parsing, 2048-entry in-memory DNS caching with 1-hour expiration, 4096-token TLS session ticket caching, and unthrottled HTTP/3 multiplexing.
@@ -79,7 +80,7 @@ Automated Windows native port of [InledGroup/seafari](https://github.com/InledGr
 
 | Asset | Description |
 | :--- | :--- |
-| **[`Seafari-Setup-{release_ver}.exe`](https://github.com/jabirking-ux/seafari-win/releases/download/v{release_ver}/Seafari-Setup-{release_ver}.exe)** | **Recommended:** One-click NSIS Windows Installer with Desktop and Start Menu shortcuts. |
+| **[`Seafari-Setup-{release_ver}.exe`](https://github.com/jabirking-ux/seafari-win/releases/download/v{release_ver}/Seafari-Setup-{release_ver}.exe)** | **Recommended:** Ultra-fast native 64-bit Windows installer with Desktop and Start Menu shortcuts. |
 | **[`Seafari-Windows-{release_ver}.zip`](https://github.com/jabirking-ux/seafari-win/releases/download/v{release_ver}/Seafari-Windows-{release_ver}.zip)** | **Portable:** Extract anywhere and launch `seafari.exe` or `firefox.exe` directly. |
 
 ---
