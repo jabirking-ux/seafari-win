@@ -126,7 +126,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git add last_version.txt last_upstream_commit.txt version.txt chrome/ MacTahoe/ tab-overview/ userChrome.css userContent.css customChrome.css newtab.html seafari.png seafari.ico build_seafari_linux.sh || true
+          git add last_version.txt last_upstream_commit.txt version.txt chrome/ MacTahoe/ tab-overview/ userChrome.css userContent.css customChrome.css newtab.html seafari.png seafari.ico build_seafari_linux.sh src/ scripts/ || true
           if ! git diff --cached --quiet; then
             git commit -m "chore: update to Firefox ${{ steps.check_updates.outputs.ff_version }} (upstream ${{ steps.check_updates.outputs.upstream_sha }})"
             git push origin HEAD

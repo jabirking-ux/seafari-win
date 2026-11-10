@@ -88,7 +88,8 @@ echo "[*] Applying Seafari UI overlay, omni.ja patches, and Windows adaptations.
 python3 "$ROOT_DIR/scripts/patch_windows_firefox.py" \
     --firefox-dir "$WORKSPACE/Seafari" \
     --ublock-xpi "$UBLOCK_XPI" \
-    --atbc-xpi "$ATBC_XPI"
+    --atbc-xpi "$ATBC_XPI" \
+    --release-version "$RELEASE_VERSION"
 
 PORTABLE_ZIP="$ROOT_DIR/Seafari-Windows-${RELEASE_VERSION}.zip"
 rm -f "$PORTABLE_ZIP"

@@ -301,8 +301,17 @@ def patch_ublock_xpi(src_xpi, dst_xpi):
                     zf.write(full_path, rel_path)
 
 
-def extract_seafari_cfg_from_linux_script(linux_script_path):
+def extract_seafari_cfg_from_linux_script(linux_script_path, release_version=None):
     """Extracts the seafari.cfg template from build_seafari_linux.sh and injects Windows enhancements."""
+    if not release_version:
+        repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        vpath = os.path.join(repo_root, "version.txt")
+        if os.path.exists(vpath):
+            with open(vpath, "r", encoding="utf-8") as vf:
+                release_version = vf.read().strip()
+        else:
+            release_version = "158.0.12"
+
     with open(linux_script_path, "r", encoding="utf-8") as f:
         script = f.read()
 
@@ -786,9 +795,382 @@ try {
         }, 16);
       } catch (moveErr) {}
 """
+
+    updater_js = f"""
+      // --- 4. In-App Auto-Updater Engine & Liquid Glass Update UI ---
+      try {{
+        var SEAFARI_CURRENT_VERSION = "{release_version}";
+        var SEAFARI_REPO_OWNER = "jabirking-ux";
+        var SEAFARI_REPO_NAME = "seafari-win";
+
+        function isNewerVersion(remote, local) {{
+          try {{
+            var r = remote.replace(/^v/, "").trim().split(".").map(function(n) {{ return parseInt(n, 10) || 0; }});
+            var l = local.replace(/^v/, "").trim().split(".").map(function(n) {{ return parseInt(n, 10) || 0; }});
+            var len = Math.max(r.length, l.length);
+            for (var i = 0; i < len; i++) {{
+              var rv = r[i] || 0;
+              var lv = l[i] || 0;
+              if (rv > lv) return true;
+              if (rv < lv) return false;
+            }}
+          }} catch(e) {{}}
+          return false;
+        }}
+
+        function getInstallDir() {{
+          try {{
+            var greDir = Components.classes["@mozilla.org/file/directory_service;1"]
+                                   .getService(Components.interfaces.nsIProperties)
+                                   .get("GreD", Components.interfaces.nsIFile);
+            return greDir.path;
+          }} catch(e) {{
+            return "";
+          }}
+        }}
+
+        function getProcessPid() {{
+          try {{
+            return Services.appinfo.processID;
+          }} catch(e) {{
+            return 0;
+          }}
+        }}
+
+        function launchNativeUpdater(args) {{
+          try {{
+            var greDir = Components.classes["@mozilla.org/file/directory_service;1"]
+                                   .getService(Components.interfaces.nsIProperties)
+                                   .get("GreD", Components.interfaces.nsIFile);
+            var exe = greDir.clone();
+            exe.append("seafari_updater.exe");
+
+            var proc = Components.classes["@mozilla.org/process/util;1"]
+                                 .createInstance(Components.interfaces.nsIProcess);
+
+            if (exe.exists()) {{
+              proc.init(exe);
+              proc.run(false, args, args.length);
+              return true;
+            }}
+
+            var cmdFile = greDir.clone();
+            cmdFile.append("seafari_updater.cmd");
+            if (cmdFile.exists()) {{
+              var winDir = Components.classes["@mozilla.org/file/directory_service;1"]
+                                     .getService(Components.interfaces.nsIProperties)
+                                     .get("WinD", Components.interfaces.nsIFile);
+              var system32 = winDir.clone();
+              system32.append("System32");
+              system32.append("cmd.exe");
+              if (system32.exists()) {{
+                var cmdArgs = ["/c", cmdFile.path].concat(args);
+                proc.init(system32);
+                proc.run(false, cmdArgs, cmdArgs.length);
+                return true;
+              }}
+            }}
+            return false;
+          }} catch(e) {{
+            log("launchNativeUpdater error: " + e);
+            return false;
+          }}
+        }}
+
+        function quitAndRelaunch() {{
+          try {{
+            var appStartup = Components.classes["@mozilla.org/toolkit/app-startup;1"]
+                                       .getService(Components.interfaces.nsIAppStartup);
+            appStartup.quit(Components.interfaces.nsIAppStartup.eAttemptQuit | Components.interfaces.nsIAppStartup.eRestart);
+          }} catch(e) {{
+            try {{ win.close(); }} catch(ce) {{}}
+          }}
+        }}
+
+        function showNotificationToast(msg, isSuccess, durationMs) {{
+          try {{
+            var oldToast = doc.getElementById("seafari-toast-notification");
+            if (oldToast) oldToast.remove();
+
+            var toast = doc.createElementNS("http://www.w3.org/1999/xhtml", "div");
+            toast.id = "seafari-toast-notification";
+            toast.className = "seafari-toast-notification";
+            toast.textContent = msg;
+            doc.documentElement.appendChild(toast);
+
+            win.setTimeout(function() {{
+              toast.classList.add("seafari-toast-visible");
+            }}, 20);
+
+            win.setTimeout(function() {{
+              toast.classList.remove("seafari-toast-visible");
+              win.setTimeout(function() {{ try {{ toast.remove(); }} catch(e) {{}} }}, 300);
+            }}, durationMs || 3500);
+          }} catch(e) {{}}
+        }}
+
+        function showUpdateBanner(targetVer, downloadUrl) {{
+          try {{
+            var oldBanner = doc.getElementById("seafari-update-banner");
+            if (oldBanner) oldBanner.remove();
+
+            var banner = doc.createElementNS("http://www.w3.org/1999/xhtml", "div");
+            banner.id = "seafari-update-banner";
+            banner.className = "seafari-update-banner";
+
+            var innerHtml = [
+              '<div class="seafari-update-header">',
+              '  <div class="seafari-update-title-wrap">',
+              '    <svg class="seafari-update-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">',
+              '      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>',
+              '      <polyline points="7 10 12 15 17 10"></polyline>',
+              '      <line x1="12" y1="15" x2="12" y2="3"></line>',
+              '    </svg>',
+              '    <span class="seafari-update-title">Update Available</span>',
+              '  </div>',
+              '  <button class="seafari-update-close" id="seafari-update-btn-close" title="Dismiss">&times;</button>',
+              '</div>',
+              '<div class="seafari-update-body">',
+              '  <span class="seafari-update-desc" id="seafari-update-desc">Seafari v' + targetVer + ' is available for instant update.</span>',
+              '  <div class="seafari-update-progress-wrap" id="seafari-update-progress-wrap" style="display: none;">',
+              '    <div class="seafari-update-progress-bar"><div class="seafari-update-progress-fill" id="seafari-update-progress-fill" style="width: 0%;"></div></div>',
+              '    <span class="seafari-update-progress-text" id="seafari-update-progress-text">Preparing download...</span>',
+              '  </div>',
+              '</div>',
+              '<div class="seafari-update-actions">',
+              '  <button class="seafari-update-btn-secondary" id="seafari-update-btn-later">Later</button>',
+              '  <button class="seafari-update-btn-primary" id="seafari-update-btn-action">Update Now</button>',
+              '</div>'
+            ].join("");
+
+            banner.innerHTML = innerHtml;
+            doc.documentElement.appendChild(banner);
+
+            win.setTimeout(function() {{
+              banner.classList.add("seafari-banner-visible");
+            }}, 30);
+
+            var btnClose = doc.getElementById("seafari-update-btn-close");
+            var btnLater = doc.getElementById("seafari-update-btn-later");
+            var btnAction = doc.getElementById("seafari-update-btn-action");
+            var descEl = doc.getElementById("seafari-update-desc");
+            var progWrap = doc.getElementById("seafari-update-progress-wrap");
+            var progFill = doc.getElementById("seafari-update-progress-fill");
+            var progText = doc.getElementById("seafari-update-progress-text");
+
+            function dismissBanner() {{
+              banner.classList.remove("seafari-banner-visible");
+              win.setTimeout(function() {{ try {{ banner.remove(); }} catch(e) {{}} }}, 300);
+            }}
+
+            if (btnClose) btnClose.addEventListener("click", dismissBanner);
+            if (btnLater) btnLater.addEventListener("click", dismissBanner);
+
+            var downloadedInstallerPath = null;
+            var isDownloading = false;
+
+            if (btnAction) {{
+              btnAction.addEventListener("click", async function() {{
+                if (downloadedInstallerPath) {{
+                  btnAction.disabled = true;
+                  btnAction.textContent = "Restarting...";
+                  var pid = getProcessPid();
+                  var instDir = getInstallDir();
+                  launchNativeUpdater(["--apply", downloadedInstallerPath, String(pid), instDir]);
+                  quitAndRelaunch();
+                  return;
+                }}
+
+                if (isDownloading) return;
+                isDownloading = true;
+
+                btnAction.disabled = true;
+                btnAction.textContent = "Downloading...";
+                if (btnLater) btnLater.style.display = "none";
+                progWrap.style.display = "flex";
+                progFill.style.width = "0%";
+                progText.textContent = "Connecting...";
+
+                try {{
+                  var res = await win.fetch(downloadUrl, {{ cache: "no-store" }});
+                  if (!res.ok) throw new Error("HTTP " + res.status);
+
+                  var total = parseInt(res.headers.get("content-length") || "0", 10);
+                  var reader = res.body.getReader();
+                  var received = 0;
+                  var chunks = [];
+
+                  while (true) {{
+                    var chunk = await reader.read();
+                    if (chunk.done) break;
+                    chunks.push(chunk.value);
+                    received += chunk.value.length;
+                    if (total > 0) {{
+                      var pct = Math.round((received / total) * 100);
+                      progFill.style.width = pct + "%";
+                      progText.textContent = "Downloading Seafari v" + targetVer + "... " + pct + "% (" + (received / 1048576).toFixed(1) + " MB / " + (total / 1048576).toFixed(1) + " MB)";
+                    }} else {{
+                      progFill.style.width = "50%";
+                      progText.textContent = "Downloading... " + (received / 1048576).toFixed(1) + " MB";
+                    }}
+                  }}
+
+                  var allBytes = new Uint8Array(received);
+                  var offset = 0;
+                  for (var i = 0; i < chunks.length; i++) {{
+                    allBytes.set(chunks[i], offset);
+                    offset += chunks[i].length;
+                  }}
+
+                  var tmpFile = Components.classes["@mozilla.org/file/directory_service;1"]
+                                          .getService(Components.interfaces.nsIProperties)
+                                          .get("TmpD", Components.interfaces.nsIFile);
+                  tmpFile.append("Seafari-Update-" + targetVer + ".exe");
+                  if (tmpFile.exists()) tmpFile.remove(false);
+
+                  var fos = Components.classes["@mozilla.org/network/file-output-stream;1"]
+                                      .createInstance(Components.interfaces.nsIFileOutputStream);
+                  fos.init(tmpFile, 0x02 | 0x08 | 0x20, 438, 0);
+                  var bos = Components.classes["@mozilla.org/binaryoutputstream;1"]
+                                      .createInstance(Components.interfaces.nsIBinaryOutputStream);
+                  bos.setOutputStream(fos);
+                  bos.writeByteArray(allBytes, allBytes.length);
+                  bos.close();
+                  fos.close();
+
+                  downloadedInstallerPath = tmpFile.path;
+                  progFill.style.width = "100%";
+                  progText.textContent = "Download complete.";
+                  descEl.textContent = "Seafari v" + targetVer + " is downloaded and ready to apply.";
+                  btnAction.disabled = false;
+                  btnAction.textContent = "Restart & Update";
+                }} catch(dlErr) {{
+                  log("In-app download error: " + dlErr + ", delegating to native updater");
+                  progText.textContent = "Applying update in background...";
+                  btnAction.textContent = "Updating...";
+                  var pid = getProcessPid();
+                  var instDir = getInstallDir();
+                  var launched = launchNativeUpdater(["--download-and-apply", downloadUrl, String(pid), instDir]);
+                  if (launched) {{
+                    quitAndRelaunch();
+                  }} else {{
+                    progText.textContent = "Update failed. Please retry later.";
+                    btnAction.disabled = false;
+                    btnAction.textContent = "Retry";
+                    isDownloading = false;
+                  }}
+                }}
+              }});
+            }}
+          }} catch(e) {{
+            log("showUpdateBanner error: " + e);
+          }}
+        }}
+
+        async function checkForUpdates(interactive) {{
+          try {{
+            if (interactive) {{
+              showNotificationToast("Checking for updates...", false, 2000);
+            }}
+
+            var remoteVer = "";
+            var downloadUrl = "";
+
+            try {{
+              var vRes = await win.fetch("https://raw.githubusercontent.com/" + SEAFARI_REPO_OWNER + "/" + SEAFARI_REPO_NAME + "/main/version.txt?t=" + Date.now(), {{ cache: "no-store" }});
+              if (vRes.ok) {{
+                remoteVer = (await vRes.text()).trim();
+              }}
+            }} catch(e) {{}}
+
+            if (!remoteVer) {{
+              try {{
+                var ghRes = await win.fetch("https://api.github.com/repos/" + SEAFARI_REPO_OWNER + "/" + SEAFARI_REPO_NAME + "/releases/latest", {{ cache: "no-store" }});
+                if (ghRes.ok) {{
+                  var ghData = await ghRes.json();
+                  if (ghData.tag_name) {{
+                    remoteVer = ghData.tag_name.replace(/^v/, "").trim();
+                  }}
+                }}
+              }} catch(e) {{}}
+            }}
+
+            if (!remoteVer) {{
+              if (interactive) {{
+                showNotificationToast("Unable to check for updates. Please verify your connection.", false, 4000);
+              }}
+              return;
+            }}
+
+            if (isNewerVersion(remoteVer, SEAFARI_CURRENT_VERSION)) {{
+              downloadUrl = "https://github.com/" + SEAFARI_REPO_OWNER + "/" + SEAFARI_REPO_NAME + "/releases/download/v" + remoteVer + "/Seafari-Setup-" + remoteVer + ".exe";
+              doc.documentElement.setAttribute("seafari-update-available", "true");
+
+              var pillBtn = doc.getElementById("seafari-pill-menu");
+              if (pillBtn) pillBtn.setAttribute("seafari-update-available", "true");
+              var panelBtn = doc.getElementById("PanelUI-menu-button");
+              if (panelBtn) panelBtn.setAttribute("seafari-update-available", "true");
+
+              showUpdateBanner(remoteVer, downloadUrl);
+            }} else {{
+              doc.documentElement.removeAttribute("seafari-update-available");
+              if (interactive) {{
+                showNotificationToast("Seafari is up to date (v" + SEAFARI_CURRENT_VERSION + ").", true, 3500);
+              }}
+            }}
+          }} catch(e) {{
+            log("checkForUpdates error: " + e);
+            if (interactive) {{
+              showNotificationToast("Update check encountered an error.", false, 3500);
+            }}
+          }}
+        }}
+
+        // Add 'Check for Updates…' to the app hamburger menu
+        function attachAppMenuUpdater() {{
+          try {{
+            var appMenuPopup = doc.getElementById("appMenu-popup");
+            if (!appMenuPopup) return;
+
+            appMenuPopup.addEventListener("popupshowing", function() {{
+              try {{
+                if (doc.getElementById("appMenu-seafari-update")) return;
+                var updateBtn = doc.createXULElement ? doc.createXULElement("toolbarbutton") : doc.createElement("toolbarbutton");
+                updateBtn.id = "appMenu-seafari-update";
+                updateBtn.className = "subviewbutton subviewbutton-iconic";
+                updateBtn.setAttribute("label", "Check for Updates…");
+                updateBtn.style.setProperty("font-weight", "500", "important");
+                updateBtn.addEventListener("command", function(ev) {{
+                  try {{ appMenuPopup.hidePopup(); }} catch(e) {{}}
+                  checkForUpdates(true);
+                }});
+
+                var helpBtn = doc.getElementById("appMenu-help-button");
+                if (helpBtn && helpBtn.parentNode) {{
+                  helpBtn.parentNode.insertBefore(updateBtn, helpBtn);
+                }} else {{
+                  appMenuPopup.appendChild(updateBtn);
+                }}
+              }} catch(e) {{}}
+            }}, true);
+          }} catch(e) {{}}
+        }}
+        attachAppMenuUpdater();
+
+        // Background check 10 seconds after launch (zero startup penalty)
+        win.setTimeout(function() {{
+          checkForUpdates(false);
+        }}, 10000);
+
+      }} catch(updaterErr) {{
+        log("Seafari updater engine init error: " + updaterErr);
+      }}
+"""
+
+    window_enhancements_js = window_move_js + "\n" + updater_js
     cfg = cfg.replace(
         'if (urlbar) {\n        urlbar.addEventListener("focusin", function() { setHidden(false); updateToolbarLuminance(); });',
-        window_move_js + '\n      if (urlbar) {\n        urlbar.addEventListener("focusin", function() { setHidden(false); updateToolbarLuminance(); });',
+        window_enhancements_js + '\n      if (urlbar) {\n        urlbar.addEventListener("focusin", function() { setHidden(false); updateToolbarLuminance(); });',
         1,
     )
     return cfg
@@ -1192,6 +1574,7 @@ def main():
     parser.add_argument("--firefox-dir", required=True, help="Path to extracted Firefox directory (core/)")
     parser.add_argument("--ublock-xpi", required=True, help="Path to downloaded ublock_origin.xpi")
     parser.add_argument("--atbc-xpi", required=True, help="Path to downloaded adaptive_tab_bar_colour.xpi")
+    parser.add_argument("--release-version", default=None, help="Seafari release version (defaults to version.txt)")
     args = parser.parse_args()
 
     repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -1353,7 +1736,7 @@ def main():
     linux_script = os.path.join(repo_root, "build_seafari.sh")
     if not os.path.exists(linux_script):
         linux_script = os.path.join(repo_root, "build_seafari_linux.sh")
-    seafari_cfg = extract_seafari_cfg_from_linux_script(linux_script)
+    seafari_cfg = extract_seafari_cfg_from_linux_script(linux_script, release_version=args.release_version)
     with open(os.path.join(firefox_dir, "seafari.cfg"), "w", encoding="utf-8") as f:
         f.write(seafari_cfg + "\n")
 
@@ -1499,6 +1882,30 @@ def main():
             shutil.copy2(ff_exe, seafari_exe)
         elif os.path.exists(seafari_exe):
             patch_pe_resources_inplace(seafari_exe, png_src)
+
+    # 8b. Build dedicated native updater helper (seafari_updater.exe) and copy seafari_updater.cmd
+    updater_c = os.path.join(repo_root, "src", "seafari_updater.c")
+    updater_exe = os.path.join(firefox_dir, "seafari_updater.exe")
+    updater_cmd = os.path.join(repo_root, "src", "seafari_updater.cmd")
+    updater_cmd_dst = os.path.join(firefox_dir, "seafari_updater.cmd")
+
+    if os.path.exists(updater_cmd):
+        shutil.copy2(updater_cmd, updater_cmd_dst)
+
+    if os.path.exists(updater_c):
+        compilers = [
+            ["x86_64-w64-mingw32-gcc", "-O2", "-mwindows", updater_c, "-o", updater_exe, "-lshell32", "-lurlmon", "-luser32"],
+            ["clang", "-O2", updater_c, "-o", updater_exe, "-Xlinker", "/subsystem:windows", "-lshell32", "-lurlmon", "-luser32"],
+            ["gcc", "-O2", "-mwindows", updater_c, "-o", updater_exe, "-lshell32", "-lurlmon", "-luser32"],
+        ]
+        for cmd in compilers:
+            try:
+                subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                patch_pe_resources_inplace(updater_exe, png_src)
+                print("[*] Successfully compiled native updater helper: seafari_updater.exe")
+                break
+            except Exception:
+                continue
 
     # 9. Register InledGroup.Seafari in Windows Registry if running on Windows
     if sys.platform == "win32":

@@ -57,6 +57,7 @@ Automated Windows native port of [InledGroup/seafari](https://github.com/InledGr
 
 ### What is Included and Key Updates
 - **Authentic Upstream Parity & Liquid Glass**: 1:1 synchronization with official upstream [InledGroup/seafari](https://github.com/InledGroup/seafari) macOS Safari UI theme, Start Page, Favorites, Privacy Report, Reading List, and liquid glass navigation pills.
+- **In-App Auto-Updater Engine**: Seamlessly checks for new Seafari releases in the background (or on-demand via the hamburger menu), displays a liquid glass update notification with real-time download percentage progress, and silently executes in-place updates with automatic restart into the new version without needing to download the installer manually.
 - **Safari-Grade Resource Profile & App Nap**: Emulates macOS Safari's power and memory footprint via 1Hz background timer throttling, automatic idle heap compaction, 64MB memory/surface cache limits, 2-process consolidation, zero-waste network prefetch policies, and 1-minute inactive tab memory discarding.
 - **Faster Web Page Loading**: Accelerated rendering with 60ms progressive DOM reflow, non-blocking tokenized parsing, 2048-entry in-memory DNS caching with 1-hour expiration, 4096-token TLS session ticket caching, and unthrottled HTTP/3 multiplexing.
 - **macOS Window Zoom & Genie Animations**: Authentic macOS spring zoom window entrance on launch, alongside iconic macOS Genie effect minimize and restore animations.
