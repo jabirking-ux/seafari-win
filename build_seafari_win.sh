@@ -124,11 +124,11 @@ if [ "$SKIP_INSTALLER" != "true" ]; then
 
     BUILT_STUB="false"
     if command -v x86_64-w64-mingw32-gcc >/dev/null 2>&1; then
-        x86_64-w64-mingw32-gcc -O3 -mwindows "-DSEAFARI_VERSION=$RELEASE_VERSION" -I"$ROOT_DIR/src" $SRC_FILES $RC_OBJ -o "$STUB_EXE" -lole32 -lshell32 -luuid -lcomctl32 -ladvapi32 -ldwmapi -lshlwapi && BUILT_STUB="true" || true
+        x86_64-w64-mingw32-gcc -O3 -mwindows "-DSEAFARI_VERSION=$RELEASE_VERSION" -I"$ROOT_DIR/src" $SRC_FILES $RC_OBJ -o "$STUB_EXE" -lole32 -lshell32 -luuid -lcomctl32 -ladvapi32 -ldwmapi -lshlwapi -luser32 -lgdi32 && BUILT_STUB="true" || true
     elif command -v clang >/dev/null 2>&1; then
         clang -O2 "-DSEAFARI_VERSION=$RELEASE_VERSION" -I"$ROOT_DIR/src" $SRC_FILES $RC_OBJ -o "$STUB_EXE" -Xlinker /subsystem:windows -lshell32 -lole32 -lcomctl32 -ladvapi32 -ldwmapi -luser32 -lgdi32 && BUILT_STUB="true" || true
     elif command -v gcc >/dev/null 2>&1; then
-        gcc -O3 -mwindows "-DSEAFARI_VERSION=$RELEASE_VERSION" -I"$ROOT_DIR/src" $SRC_FILES $RC_OBJ -o "$STUB_EXE" -lole32 -lshell32 -luuid -lcomctl32 -ladvapi32 -ldwmapi -lshlwapi && BUILT_STUB="true" || true
+        gcc -O3 -mwindows "-DSEAFARI_VERSION=$RELEASE_VERSION" -I"$ROOT_DIR/src" $SRC_FILES $RC_OBJ -o "$STUB_EXE" -lole32 -lshell32 -luuid -lcomctl32 -ladvapi32 -ldwmapi -lshlwapi -luser32 -lgdi32 && BUILT_STUB="true" || true
     fi
 
     if [ "$BUILT_STUB" = "true" ] && [ -f "$STUB_EXE" ]; then
