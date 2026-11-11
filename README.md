@@ -1,9 +1,9 @@
 <div align="left">
   <img src="seafari.png" alt="Seafari Logo" width="110" align="left" style="margin-right: 20px;">
-  <h1>Seafari for Windows</h1>
+  <h1>Seafari for Windows (Unofficial Port)</h1>
 </div>
 
-**Seafari for Windows** is the official Windows port of [InledGroup/seafari](https://github.com/InledGroup/seafari) — the macOS Safari-styled browser built on top of Mozilla Firefox.
+**Seafari for Windows** is an unofficial Windows port of [InledGroup/seafari](https://github.com/InledGroup/seafari) — the macOS Safari-styled browser built on top of Mozilla Firefox.
 
 It tracks Mozilla's latest Windows (`win64`) Firefox releases and upstream [InledGroup/seafari](https://github.com/InledGroup/seafari) updates daily via automated GitHub Actions, packaging both a **Windows Installer (`.exe`)** and a **Portable Archive (`.zip`)**.
 
