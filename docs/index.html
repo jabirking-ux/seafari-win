@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Seafari for Windows — The Safari Experience on Windows</title>
+  <meta name="description" content="Official Windows port of Seafari: the authentic macOS Safari browser built on top of Mozilla Firefox with daily auto-updates, native traffic lights, and real liquid glass.">
+
+  <link rel="icon" type="image/x-icon" href="seafari.ico">
+  <link rel="apple-touch-icon" href="seafari.png">
+
+  <style>
+    :root {
+      --bg: #000000;
+      --card-bg: #121214;
+      --card-border: rgba(255, 255, 255, 0.10);
+      --text-white: #f5f5f7;
+      --text-gray: #86868b;
+      --text-dim: #6e6e73;
+      --safari-blue: #0071e3;
+      --safari-blue-hover: #0077ed;
+      --accent-cyan: #2997ff;
+      --nav-height: 48px;
+      --font-stack: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text-white);
+      font-family: var(--font-stack);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overflow-x: hidden;
+      line-height: 1.47059;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    /* --------------------------------------------------------------------------
+       1. Navigation Bar with Frosted Glass
+       -------------------------------------------------------------------------- */
+    .global-nav {
+      position: sticky;
+      top: 0;
+      z-index: 9999;
+      height: var(--nav-height);
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(25px) saturate(180%);
+      -webkit-backdrop-filter: blur(25px) saturate(180%);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+      font-size: 13px;
+      letter-spacing: -0.01em;
+      user-select: none;
+    }
+
+    .nav-inner {
+      max-width: 1080px;
+      margin: 0 auto;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+      font-size: 15px;
+      letter-spacing: -0.02em;
+    }
+
+    .nav-brand img {
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 22px;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: rgba(255, 255, 255, 0.8);
+      transition: color 0.15s ease;
+    }
+
+    .nav-links a:hover {
+      color: #ffffff;
+    }
+
+    .nav-cta {
+      background: var(--safari-blue);
+      color: #ffffff !important;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 500;
+      transition: background 0.15s ease;
+    }
+
+    .nav-cta:hover {
+      background: var(--safari-blue-hover);
+    }
+
+    /* --------------------------------------------------------------------------
+       2. Hero Section
+       -------------------------------------------------------------------------- */
+    .hero {
+      position: relative;
+      padding: 90px 20px 60px;
+      text-align: center;
+      background: radial-gradient(circle 900px at 50% 15%, rgba(0, 113, 227, 0.18) 0%, transparent 70%);
+      overflow: hidden;
+    }
+
+    .hero-eyebrow {
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--accent-cyan);
+      letter-spacing: -0.01em;
+      margin-bottom: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .hero-headline {
+      font-size: clamp(44px, 7vw, 76px);
+      font-weight: 700;
+      letter-spacing: -0.035em;
+      line-height: 1.06;
+      margin-bottom: 18px;
+      background: linear-gradient(180deg, #ffffff 40%, rgba(255, 255, 255, 0.65) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-subhead {
+      font-size: clamp(19px, 2.5vw, 24px);
+      color: var(--text-gray);
+      max-width: 680px;
+      margin: 0 auto 34px;
+      line-height: 1.35;
+      font-weight: 400;
+    }
+
+    .hero-actions {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 50px;
+    }
+
+    .btn-primary {
+      background: var(--safari-blue);
+      color: #ffffff;
+      padding: 13px 28px;
+      border-radius: 999px;
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 8px 24px rgba(0, 113, 227, 0.4);
+      transition: all 0.2s ease;
+    }
+
+    .btn-primary:hover {
+      background: var(--safari-blue-hover);
+      transform: translateY(-1px);
+      box-shadow: 0 12px 28px rgba(0, 113, 227, 0.5);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-white);
+      padding: 13px 24px;
+      border-radius: 999px;
+      font-size: 15px;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(20px);
+      transition: all 0.2s ease;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.14);
+      border-color: rgba(255, 255, 255, 0.3);
+    }
+
+    /* --------------------------------------------------------------------------
+       3. Browser Preview Window
+       -------------------------------------------------------------------------- */
+    .preview-wrapper {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    .browser-frame {
+      background: #1c1c1e;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 18px;
+      box-shadow: 0 28px 70px rgba(0, 0, 0, 0.7);
+      overflow: hidden;
+      text-align: left;
+    }
+
+    .browser-titlebar {
+      height: 42px;
+      background: #252528;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 16px;
+      user-select: none;
+    }
+
+    .traffic-lights {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .traffic-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+
+    .traffic-close { background: #ff5f56; }
+    .traffic-min { background: #ffbd2e; }
+    .traffic-max { background: #27c93f; }
+
+    .browser-url-pill {
+      flex: 1;
+      max-width: 580px;
+      margin: 0 auto;
+      height: 28px;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--text-gray);
+    }
+
+    .browser-content {
+      position: relative;
+      background: #0d0d0f;
+    }
+
+    .browser-content img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    /* --------------------------------------------------------------------------
+       4. Bento Features Grid
+       -------------------------------------------------------------------------- */
+    .section-container {
+      max-width: 1120px;
+      margin: 100px auto 40px;
+      padding: 0 20px;
+    }
+
+    .section-header {
+      text-align: center;
+      margin-bottom: 50px;
+    }
+
+    .section-title {
+      font-size: clamp(32px, 5vw, 48px);
+      font-weight: 700;
+      letter-spacing: -0.025em;
+      margin-bottom: 12px;
+    }
+
+    .section-desc {
+      font-size: 17px;
+      color: var(--text-gray);
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+
+    @media (max-width: 900px) {
+      .features-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 640px) {
+      .features-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .feature-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 30px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: all 0.25s ease;
+    }
+
+    .feature-card:hover {
+      border-color: rgba(255, 255, 255, 0.22);
+      transform: translateY(-2px);
+    }
+
+    .feature-icon-box {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: rgba(0, 113, 227, 0.15);
+      border: 1px solid rgba(0, 113, 227, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+      color: var(--accent-cyan);
+    }
+
+    .feature-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      letter-spacing: -0.015em;
+    }
+
+    .feature-desc {
+      font-size: 14px;
+      color: var(--text-gray);
+      line-height: 1.5;
+    }
+
+    /* --------------------------------------------------------------------------
+       5. Release Info Banner
+       -------------------------------------------------------------------------- */
+    .release-banner {
+      background: #141416;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 24px;
+      padding: 40px;
+      margin: 80px auto;
+      max-width: 1080px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+
+    .release-info h3 {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .release-info p {
+      font-size: 14px;
+      color: var(--text-gray);
+    }
+
+    .release-meta {
+      display: flex;
+      gap: 16px;
+      font-size: 12px;
+      font-family: ui-monospace, Menlo, Consolas, monospace;
+      color: var(--text-dim);
+      margin-top: 10px;
+    }
+
+    /* --------------------------------------------------------------------------
+       6. Apple Multi-Column Footer
+       -------------------------------------------------------------------------- */
+    .apple-footer {
+      background: #111112;
+      color: var(--text-dim);
+      font-size: 12px;
+      line-height: 1.4;
+      padding: 40px 0 24px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .footer-inner {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    .footer-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 28px;
+      padding-bottom: 30px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    @media (max-width: 768px) {
+      .footer-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .footer-col-title {
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.88);
+      margin-bottom: 10px;
+    }
+
+    .footer-col-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .footer-col-list a:hover {
+      color: var(--text-white);
+      text-decoration: underline;
+    }
+
+    .footer-bottom {
+      padding-top: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: 11px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Glass Navigation -->
+  <nav class="global-nav">
+    <div class="nav-inner">
+      <a href="./" class="nav-brand">
+        <img src="seafari.png" alt="Seafari Compass">
+        <span>Seafari</span>
+      </a>
+
+      <ul class="nav-links">
+        <li><a href="#features">Features</a></li>
+        <li><a href="#preview">Preview</a></li>
+        <li><a href="#downloads">Downloads</a></li>
+        <li><a href="https://github.com/jabirking-ux/seafari-win" target="_blank" rel="noopener noreferrer">Source</a></li>
+        <li><a href="https://jabirking-ux.github.io/Vpple/" target="_blank" rel="noopener noreferrer">Vpple Hub</a></li>
+        <li>
+          <a href="https://github.com/jabirking-ux/seafari-win/releases/download/v158.0.13/Seafari-Setup-158.0.13.exe" class="nav-cta">
+            Download v158.0.13
+          </a>
+        </li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <header class="hero">
+    <div class="hero-eyebrow">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2a10 10 0 100 20 10 10 0 000-20zM12 6v6l4 2"/></svg>
+      <span>Daily Automated Upstream Sync</span>
+    </div>
+
+    <h1 class="hero-headline">Safari. Rebuilt on Firefox for Windows.</h1>
+
+    <p class="hero-subhead">
+      The authentic macOS Safari desktop experience ported to Windows 10 &amp; 11. Liquid glass tabs, left-hand traffic lights, and pure Gecko browsing freedom.
+    </p>
+
+    <div class="hero-actions" id="downloads">
+      <a href="https://github.com/jabirking-ux/seafari-win/releases/download/v158.0.13/Seafari-Setup-158.0.13.exe" class="btn-primary">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+        <span>Download Installer (.exe)</span>
+      </a>
+
+      <a href="https://github.com/jabirking-ux/seafari-win/releases/download/v158.0.13/Seafari-Windows-158.0.13.zip" class="btn-secondary">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+        <span>Portable Archive (.zip)</span>
+      </a>
+
+      <a href="https://github.com/jabirking-ux/seafari-win" target="_blank" rel="noopener noreferrer" class="btn-secondary">
+        <span>GitHub Repository &rsaquo;</span>
+      </a>
+    </div>
+
+    <!-- Browser Mockup Preview Frame -->
+    <div class="preview-wrapper" id="preview">
+      <div class="browser-frame">
+        <div class="browser-titlebar">
+          <div class="traffic-lights">
+            <div class="traffic-dot traffic-close"></div>
+            <div class="traffic-dot traffic-min"></div>
+            <div class="traffic-dot traffic-max"></div>
+          </div>
+          <div class="browser-url-pill">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+            <span>https://apple.com/safari</span>
+          </div>
+        </div>
+        <div class="browser-content">
+          <img src="demo-seafari-v2.6.gif" alt="Seafari macOS theme running on Windows" loading="lazy">
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Bento Features Section -->
+  <section class="section-container" id="features">
+    <div class="section-header">
+      <h2 class="section-title">Engineered with macOS Precision</h2>
+      <p class="section-desc">
+        Not an imitation stylesheet. A fully integrated Windows 64-bit release layer with deep Win32 shell adaptations.
+      </p>
+    </div>
+
+    <div class="features-grid">
+      <!-- 1. Left-Hand Traffic Lights -->
+      <article class="feature-card">
+        <div>
+          <div class="feature-icon-box">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="6" cy="12" r="3"/><circle cx="12" cy="12" r="3"/><circle cx="18" cy="12" r="3"/></svg>
+          </div>
+          <h3 class="feature-title">Native Left Traffic Lights</h3>
+          <p class="feature-desc">
+            Close, minimize, and zoom controls anchored on the left in authentic macOS order with triad hover glyphs and click rings.
+          </p>
+        </div>
+      </article>
+
+      <!-- 2. Gecko Freedom -->
+      <article class="feature-card">
+        <div>
+          <div class="feature-icon-box">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+          </div>
+          <h3 class="feature-title">No Manifest V3 Limits</h3>
+          <p class="feature-desc">
+            Powered by Firefox Gecko. Full ad-blocker capability, multi-account container tabs, and genuine uBlock Origin tracker protection.
+          </p>
+        </div>
+      </article>
+
+      <!-- 3. Safari App Nap -->
+      <article class="feature-card">
+        <div>
+          <div class="feature-icon-box">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          </div>
+          <h3 class="feature-title">App Nap Throttling</h3>
+          <p class="feature-desc">
+            Emulates macOS power savings: 1Hz background timer throttling, idle heap compaction, and automatic memory discarding for inactive tabs.
+          </p>
+        </div>
+      </article>
+
+      <!-- 4. Windows Shell Identity -->
+      <article class="feature-card">
+        <div>
+          <div class="feature-icon-box">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          </div>
+          <h3 class="feature-title">Win32 Taskbar Identity</h3>
+          <p class="feature-desc">
+            Patched PE metadata and AppUserModelID: Windows Taskbar, Task Manager, and Alt+Tab cleanly identify it as Seafari.
+          </p>
+        </div>
+      </article>
+
+      <!-- 5. 50x Faster Native Installer -->
+      <article class="feature-card">
+        <div>
+          <div class="feature-icon-box">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+          </div>
+          <h3 class="feature-title">Ultra-Fast 64-Bit Installer</h3>
+          <p class="feature-desc">
+            Native C-based installer engine with multi-threaded Deflate decompression executing full setup in under 400 milliseconds.
+          </p>
+        </div>
+      </article>
+
+      <!-- 6. Daily CI/CD Pipeline -->
+      <article class="feature-card">
+        <div>
+          <div class="feature-icon-box">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          </div>
+          <h3 class="feature-title">Automated Daily Builds</h3>
+          <p class="feature-desc">
+            GitHub Actions pipeline tracks the latest Firefox releases and upstream InledGroup/seafari commits daily with zero latency.
+          </p>
+        </div>
+      </article>
+    </div>
+
+    <!-- Release Info Banner -->
+    <div class="release-banner">
+      <div class="release-info">
+        <h3>Seafari for Windows v158.0.13</h3>
+        <p>Built on Mozilla Firefox 160.0 (win64) with native hardware acceleration.</p>
+        <div class="release-meta">
+          <span>Release: v158.0.13</span>
+          <span>&bull;</span>
+          <span>Arch: x86_64</span>
+          <span>&bull;</span>
+          <span>Status: Stable</span>
+        </div>
+      </div>
+      <div>
+        <a href="https://github.com/jabirking-ux/seafari-win/releases/tag/v158.0.13" target="_blank" rel="noopener noreferrer" class="btn-primary">
+          View Release Notes &rsaquo;
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Apple Multi-Column Site Directory Footer -->
+  <footer class="apple-footer">
+    <div class="footer-inner">
+      <div class="footer-grid">
+        <div>
+          <h4 class="footer-col-title">Seafari</h4>
+          <ul class="footer-col-list">
+            <li><a href="#downloads">Download Installer</a></li>
+            <li><a href="#downloads">Download Portable</a></li>
+            <li><a href="#features">Features</a></li>
+            <li><a href="#preview">Interface Preview</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <h4 class="footer-col-title">Vpple Ecosystem</h4>
+          <ul class="footer-col-list">
+            <li><a href="https://jabirking-ux.github.io/Vpple/">Vpple Hub</a></li>
+            <li><a href="https://jabirking-ux.github.io/vpple-notes/">Vpple Notes</a></li>
+            <li><a href="https://jabirking-ux.github.io/Vpple/sp-pro-display/">SP Pro Display</a></li>
+            <li><a href="https://jabirking-ux.github.io/Vpple/ui-kit/">Vpple UI Kit</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <h4 class="footer-col-title">Open Source</h4>
+          <ul class="footer-col-list">
+            <li><a href="https://github.com/jabirking-ux/seafari-win">Seafari Windows Repo</a></li>
+            <li><a href="https://github.com/InledGroup/seafari">Upstream Seafari</a></li>
+            <li><a href="https://github.com/jabirking-ux/seafari-win/releases">Release Assets</a></li>
+            <li><a href="https://github.com/jabirking-ux">Jabir King GitHub</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <h4 class="footer-col-title">Projects</h4>
+          <ul class="footer-col-list">
+            <li><a href="https://jabirking-ux.github.io/">Portfolio</a></li>
+            <li><a href="https://jabirking-ux.github.io/horizon-offline-site/">Horizon Offline</a></li>
+            <li><a href="https://github.com/jabirking-ux/ProtonNext">ProtonNext</a></li>
+            <li><a href="https://github.com/jabirking-ux/TahoeBoot">TahoeBoot</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <div>Copyright &copy; 2026 InledGroup &amp; Jabir King. Open-source software released under Mozilla Public License 2.0 / MIT.</div>
+        <div>Windows 10 &bull; Windows 11 &bull; 64-bit</div>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>
